@@ -1,7 +1,7 @@
 ﻿namespace TemplateService.Domain.Departments;
 public class DepartmentLocation
 {
-	public DepartmentLocation(Guid id, Guid departmentId, IReadOnlyList<Guid> locationIds, bool isPrimaryLocation)
+	public DepartmentLocation(Guid id, Guid departmentId, Guid locationId, bool isPrimaryLocation)
 	{
  		if (id != Guid.Empty)
 			Id = id;
@@ -11,17 +11,17 @@ public class DepartmentLocation
 			DepartmentId = departmentId;
         else       
         	throw new ArgumentException("DepartmentId cannot be empty.", nameof(departmentId));
- 		if (locationIds.All(g => g != Guid.Empty))
-			LocationIds = locationIds.ToList();
+ 		if (locationId != Guid.Empty)
+			LocationId = locationId;
         else       
-        	throw new ArgumentException("LocationIds cannot be empty.", nameof(locationIds));
+        	throw new ArgumentException("LocationId cannot be empty.", nameof(locationId));
         IsPrimaryLocation = isPrimaryLocation;
 	}
     
     public Guid Id { get; private init; }
     public Guid DepartmentId { get; private init; }
     
-    public IReadOnlyList<Guid> LocationIds { get; private init; }
+    public Guid LocationId { get; private init; }
     
     public bool IsPrimaryLocation {get; private set; }
 
