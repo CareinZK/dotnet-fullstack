@@ -1,8 +1,8 @@
 ﻿namespace TemplateService.Domain.Departments;
 
-public class DepartmentPosition	
+public class DepartmentPositions
 {
-public DepartmentPosition(Guid id, Guid departmentId, IReadOnlyList<Guid> positionIds)
+public DepartmentPositions(Guid id, Guid departmentId, IReadOnlyList<Guid> positionIds)
 	{
  		if (id != Guid.Empty)
 			Id = id;
