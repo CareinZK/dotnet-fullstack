@@ -3,6 +3,11 @@
 
   <ItemGroup>
    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+   <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+     <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+     <PrivateAssets>all</PrivateAssets>
+   </PackageReference>
+   <PackageReference Include="Newtonsoft.Json" />
     <ProjectReference Include="..\TemplateService.Contracts\TemplateService.Contracts.csproj" />
     <ProjectReference Include="..\TemplateService.Core\TemplateService.Core.csproj" />
     <ProjectReference Include="..\TemplateService.Domain\TemplateService.Domain.csproj" />
