@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using DirectoryService.Contracts;
 
-namespace DirectoryService.Web;
+namespace DirectoryService.Presentation;
 
 [ApiController]
 [Route("locations")]
