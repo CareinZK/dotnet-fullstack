@@ -5,9 +5,14 @@ namespace TemplateService.Web;
 
 [ApiController]
 [Route("locations")]
-public sealed class LocationsController(ILocationsService locationsService) : ControllerBase
+public sealed class LocationsController : ControllerBase
 {
-    private readonly ILocationsService _locationsService = locationsService.ThrowIfNull();
+    private readonly ILocationsService _locationsService;
+
+    public LocationsController(ILocationsService locationsService)
+    {
+        _locationsService = locationsService;
+    }
 
     [HttpPost]
     public async Task<ActionResult<LocationDto>> CreateLocationDto(
