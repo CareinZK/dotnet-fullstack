@@ -3,6 +3,16 @@ using System.Text.RegularExpressions;
 
 public class Department
 {
+	// Parameterless constructor for EF Core materialization
+	private Department()
+	{
+		Name = string.Empty;
+		Slug = string.Empty;
+		Path = string.Empty;
+		CreatedAt = DateTime.UtcNow;
+		UpdatedAt = DateTime.UtcNow;
+	}
+
 	public Department(Guid id, string name, string slug, Department? parentDepartment)
 	{
         if (id != Guid.Empty)
@@ -22,8 +32,8 @@ public class Department
         UpdatedAt = DateTime.UtcNow;
 	}
 
-	public Guid Id { get; init; }
-    
+	public Guid Id { get; private set; }
+
     public Guid? ParentId { get; private set; }
 
 	 private const char PathSeparator = '/';
@@ -40,16 +50,16 @@ public string Name
     }
 }
 
-    public string Slug { get; init; }
+    public string Slug { get; private set; }
     
     private static readonly Regex SlugRegex = new(
         "^[a-z0-9]+(?:-[a-z0-9]+)*$",
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
 	
-    public string Path { get; init; }
+    public string Path { get; private set; }
     
-    public DateTime CreatedAt { get; private set;}
+    public DateTime CreatedAt { get; private set; }
     
     public DateTime UpdatedAt { get; private set; }
 

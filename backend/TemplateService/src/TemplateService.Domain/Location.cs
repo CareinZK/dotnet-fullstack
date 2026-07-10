@@ -2,6 +2,14 @@
 
 public class Location
 {
+	// Parameterless constructor for EF Core materialization
+	private Location()
+	{
+		Name = string.Empty;
+		Address = string.Empty;
+		CreatedAt = DateTime.UtcNow;
+		UpdatedAt = DateTime.UtcNow;
+	}
 
       public Location(Guid id, string name, string address)
     {
@@ -14,9 +22,9 @@ public class Location
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
-    public Guid Id { get; private init; }
+    public Guid Id { get; private set; }
 
-    public DateTime CreatedAt { get; private init; }
+    public DateTime CreatedAt { get; private set; }
 
     public DateTime UpdatedAt { get; private set; }
 

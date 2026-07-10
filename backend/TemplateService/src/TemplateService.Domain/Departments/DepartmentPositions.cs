@@ -2,6 +2,12 @@
 
 public class DepartmentPositions
 {
+	// Parameterless constructor for EF Core materialization
+	private DepartmentPositions()
+	{
+		PositionIds = [];
+	}
+
 public DepartmentPositions(Guid id, Guid departmentId, IReadOnlyList<Guid> positionIds)
 	{
  		if (id != Guid.Empty)
@@ -19,10 +25,10 @@ public DepartmentPositions(Guid id, Guid departmentId, IReadOnlyList<Guid> posit
         
 	}
     
-    public Guid Id { get; private init; }
-    public Guid DepartmentId { get; private init; }
-    
-    public IReadOnlyList<Guid> PositionIds { get; private init; }
+    public Guid Id { get; private set; }
+    public Guid DepartmentId { get; private set; }
+
+    public IReadOnlyList<Guid> PositionIds { get; private set; }
     
 
 }
