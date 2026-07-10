@@ -1,9 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+namespace TemplateService.Contracts;
 
-namespace TemplateService.Contracts
+public sealed record LocationDto(Guid Id, string Name, string Address);
+
+public sealed record CreateLocationDto(string Name, string Address);
+
+public sealed record UpdateLocationDto(string Name, string Address);
+
+public interface ILocationsService
 {
-        public record CreateLocationDto(Guid Id, string Name, string Address);
+    Task<LocationDto> CreateAsync(CreateLocationDto dto, CancellationToken cancellationToken);
+    Task<IReadOnlyList<LocationDto>> GetAllAsync(CancellationToken cancellationToken);
+    Task<LocationDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<bool> UpdateAsync(Guid id, UpdateLocationDto dto, CancellationToken cancellationToken);
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken);
 }
