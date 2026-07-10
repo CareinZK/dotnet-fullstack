@@ -2,6 +2,13 @@
 
 public class Position
 {
+	// Parameterless constructor for EF Core materialization
+	private Position()
+	{
+		Name = string.Empty;
+		CreatedAt = DateTime.UtcNow;
+		UpdatedAt = DateTime.UtcNow;
+	}
 
     public Position(Guid id, string name)
     {
@@ -13,9 +20,9 @@ public class Position
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
-    public Guid Id { get; private init; }
+    public Guid Id { get; private set; }
 
-    public DateTime CreatedAt { get; private init; }
+    public DateTime CreatedAt { get; private set; }
 
     public DateTime UpdatedAt { get; private set; }
 

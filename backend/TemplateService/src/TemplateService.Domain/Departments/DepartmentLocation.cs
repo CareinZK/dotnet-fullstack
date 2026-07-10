@@ -1,6 +1,11 @@
 ﻿namespace TemplateService.Domain.Departments;
 public class DepartmentLocation
 {
+	// Parameterless constructor for EF Core materialization
+	private DepartmentLocation()
+	{
+	}
+
 	public DepartmentLocation(Guid id, Guid departmentId, Guid locationId, bool isPrimaryLocation)
 	{
  		if (id != Guid.Empty)
@@ -18,10 +23,10 @@ public class DepartmentLocation
         IsPrimaryLocation = isPrimaryLocation;
 	}
     
-    public Guid Id { get; private init; }
-    public Guid DepartmentId { get; private init; }
-    
-    public Guid LocationId { get; private init; }
+    public Guid Id { get; private set; }
+    public Guid DepartmentId { get; private set; }
+
+    public Guid LocationId { get; private set; }
     
     public bool IsPrimaryLocation {get; private set; }
 
