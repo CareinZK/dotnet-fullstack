@@ -8,10 +8,10 @@
      <PrivateAssets>all</PrivateAssets>
    </PackageReference>
    <PackageReference Include="Newtonsoft.Json" />
-    <ProjectReference Include="..\TemplateService.Contracts\TemplateService.Contracts.csproj" />
     <ProjectReference Include="..\TemplateService.Core\TemplateService.Core.csproj" />
     <ProjectReference Include="..\TemplateService.Domain\TemplateService.Domain.csproj" />
     <ProjectReference Include="..\TemplateService.Infrastructure.Postgres\TemplateService.Infrastructure.Postgres.csproj" />
+    <ProjectReference Include="..\TemplateService.Contracts\TemplateService.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
