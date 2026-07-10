@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using TemplateService.Domain;
+using DirectoryService.Domain;
 
-namespace TemplateService.Infrastructure.Postgres.Configurations;
+namespace DirectoryService.Infrastructure.Postgres.Configurations;
 
 public sealed class PositionConfiguration : IEntityTypeConfiguration<Position>
 {

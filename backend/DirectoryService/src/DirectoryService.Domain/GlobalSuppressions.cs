@@ -5,4 +5,4 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-[assembly: SuppressMessage("Minor Code Smell", "S1075:URIs should not be hardcoded", Justification = "<Pending>", Scope = "member", Target = "~M:TemplateService.Domain.Departments.Department.#ctor(System.Guid,System.String,System.String,System.String,TemplateService.Domain.Departments.Department)")]
+[assembly: SuppressMessage("Minor Code Smell", "S1075:URIs should not be hardcoded", Justification = "<Pending>", Scope = "member", Target = "~M:DirectoryService.Domain.Departments.Department.#ctor(System.Guid,System.String,System.String,System.String,DirectoryService.Domain.Departments.Department)")]

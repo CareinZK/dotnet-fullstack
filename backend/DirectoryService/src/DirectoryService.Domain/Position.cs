@@ -1,4 +1,4 @@
-﻿namespace TemplateService.Domain;
+﻿namespace DirectoryService.Domain;
 
 public class Position
 {

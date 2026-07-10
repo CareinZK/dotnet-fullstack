@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="../TemplateService.Core/TemplateService.Core.csproj" />
-    <ProjectReference Include="../TemplateService.Domain/TemplateService.Domain.csproj" />
+    <ProjectReference Include="../DirectoryService.Core/DirectoryService.Core.csproj" />
+    <ProjectReference Include="../DirectoryService.Domain/DirectoryService.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

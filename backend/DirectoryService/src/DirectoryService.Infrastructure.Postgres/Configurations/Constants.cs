@@ -1,4 +1,4 @@
-namespace TemplateService.Infrastructure.Postgres.Configurations;
+namespace DirectoryService.Infrastructure.Postgres.Configurations;
 
 public static class Constants
 {

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using TemplateService.Contracts;
+using DirectoryService.Contracts;
 
-namespace TemplateService.Web;
+namespace DirectoryService.Web;
 
 [ApiController]
 [Route("locations")]

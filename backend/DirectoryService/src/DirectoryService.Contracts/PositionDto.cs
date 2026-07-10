@@ -1,4 +1,4 @@
-namespace TemplateService.Contracts;
+namespace DirectoryService.Contracts;
 
 public sealed record PositionDto(Guid Id, string Name);
 

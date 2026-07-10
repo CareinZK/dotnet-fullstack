@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using TemplateService.Domain;
-using TemplateService.Domain.Departments;
+using DirectoryService.Domain;
+using DirectoryService.Domain.Departments;
 
-namespace TemplateService.Infrastructure.Postgres;
+namespace DirectoryService.Infrastructure.Postgres;
 
 public sealed class AppDbContext : DbContext
 {

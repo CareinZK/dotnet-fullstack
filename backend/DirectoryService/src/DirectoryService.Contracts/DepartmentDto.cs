@@ -1,4 +1,4 @@
-namespace TemplateService.Contracts;
+namespace DirectoryService.Contracts;
 
 public sealed record DepartmentDto(Guid Id, string Name, string Slug, Guid? ParentId);
 

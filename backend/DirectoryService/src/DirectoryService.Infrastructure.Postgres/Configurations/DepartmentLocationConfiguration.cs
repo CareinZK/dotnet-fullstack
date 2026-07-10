@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using TemplateService.Domain.Departments;
-using TemplateService.Domain;
+using DirectoryService.Domain.Departments;
+using DirectoryService.Domain;
 
-namespace TemplateService.Infrastructure.Postgres.Configurations;
+namespace DirectoryService.Infrastructure.Postgres.Configurations;
 
 public sealed class DepartmentLocationConfiguration : IEntityTypeConfiguration<DepartmentLocation>
 {

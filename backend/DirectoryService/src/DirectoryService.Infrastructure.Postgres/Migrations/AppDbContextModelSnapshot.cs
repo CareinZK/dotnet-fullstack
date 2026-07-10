@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using TemplateService.Infrastructure.Postgres;
+using DirectoryService.Infrastructure.Postgres;
 
 #nullable disable
 
-namespace TemplateService.Infrastructure.Postgres.Migrations
+namespace DirectoryService.Infrastructure.Postgres.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     partial class AppDbContextModelSnapshot : ModelSnapshot
@@ -22,7 +22,7 @@ namespace TemplateService.Infrastructure.Postgres.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("TemplateService.Domain.Departments.Department", b =>
+            modelBuilder.Entity("DirectoryService.Domain.Departments.Department", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -67,7 +67,7 @@ namespace TemplateService.Infrastructure.Postgres.Migrations
                     b.ToTable("departments", (string)null);
                 });
 
-            modelBuilder.Entity("TemplateService.Domain.Departments.DepartmentLocation", b =>
+            modelBuilder.Entity("DirectoryService.Domain.Departments.DepartmentLocation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -96,7 +96,7 @@ namespace TemplateService.Infrastructure.Postgres.Migrations
                     b.ToTable("department_locations", (string)null);
                 });
 
-            modelBuilder.Entity("TemplateService.Domain.Departments.DepartmentPositions", b =>
+            modelBuilder.Entity("DirectoryService.Domain.Departments.DepartmentPositions", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -120,7 +120,7 @@ namespace TemplateService.Infrastructure.Postgres.Migrations
                     b.ToTable("department_positions", (string)null);
                 });
 
-            modelBuilder.Entity("TemplateService.Domain.Location", b =>
+            modelBuilder.Entity("DirectoryService.Domain.Location", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -153,7 +153,7 @@ namespace TemplateService.Infrastructure.Postgres.Migrations
                     b.ToTable("locations", (string)null);
                 });
 
-            modelBuilder.Entity("TemplateService.Domain.Position", b =>
+            modelBuilder.Entity("DirectoryService.Domain.Position", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -180,32 +180,32 @@ namespace TemplateService.Infrastructure.Postgres.Migrations
                     b.ToTable("positions", (string)null);
                 });
 
-            modelBuilder.Entity("TemplateService.Domain.Departments.Department", b =>
+            modelBuilder.Entity("DirectoryService.Domain.Departments.Department", b =>
                 {
-                    b.HasOne("TemplateService.Domain.Departments.Department", null)
+                    b.HasOne("DirectoryService.Domain.Departments.Department", null)
                         .WithMany()
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
-            modelBuilder.Entity("TemplateService.Domain.Departments.DepartmentLocation", b =>
+            modelBuilder.Entity("DirectoryService.Domain.Departments.DepartmentLocation", b =>
                 {
-                    b.HasOne("TemplateService.Domain.Departments.Department", null)
+                    b.HasOne("DirectoryService.Domain.Departments.Department", null)
                         .WithMany()
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TemplateService.Domain.Location", null)
+                    b.HasOne("DirectoryService.Domain.Location", null)
                         .WithMany()
                         .HasForeignKey("LocationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("TemplateService.Domain.Departments.DepartmentPositions", b =>
+            modelBuilder.Entity("DirectoryService.Domain.Departments.DepartmentPositions", b =>
                 {
-                    b.HasOne("TemplateService.Domain.Departments.Department", null)
+                    b.HasOne("DirectoryService.Domain.Departments.Department", null)
                         .WithMany()
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Cascade)

@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using TemplateService.Infrastructure.Postgres;
+using DirectoryService.Infrastructure.Postgres;
 
 var builder = WebApplication.CreateBuilder(args);
 
