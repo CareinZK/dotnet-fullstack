@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using DirectoryService.Contracts;
+using DirectoryService.Application.Locations;
 
 namespace DirectoryService.Presentation;
 
@@ -8,23 +9,25 @@ namespace DirectoryService.Presentation;
 public sealed class LocationsController : ControllerBase
 {
     private readonly ILocationsService _locationsService;
+    private readonly CreateLocation _createLocation;
 
-    public LocationsController(ILocationsService locationsService)
+    public LocationsController(ILocationsService locationsService, CreateLocation createLocation)
     {
         _locationsService = locationsService;
+        _createLocation = createLocation;
     }
 
     [HttpPost]
-    public async Task<ActionResult<LocationDto>> CreateLocationDto(
+    public async Task<ActionResult<Guid>> CreateLocationDto(
         [FromBody] CreateLocationDto locationDto,
         CancellationToken cancellationToken)
     {
-        var createdLocation = await _locationsService.CreateAsync(locationDto, cancellationToken);
+        var locationId = await _createLocation.ExecuteAsync(locationDto, cancellationToken);
 
         return CreatedAtAction(
             nameof(GetLocationById),
-            new { id = createdLocation.Id },
-            createdLocation);
+            new { id = locationId },
+            locationId);
     }
 
     [HttpGet]
