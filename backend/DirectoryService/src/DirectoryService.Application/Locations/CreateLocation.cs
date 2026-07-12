@@ -1,11 +1,14 @@
 using DirectoryService.Contracts;
 using DirectoryService.Domain;
 using FluentValidation;
+using DirectoryService.Application.Exceptions;
+
 
 namespace DirectoryService.Application.Locations;
 
 public sealed class CreateLocation
 {
+    
     private readonly ILocationRepository _locationRepository;
     private readonly IValidator<CreateLocationDto> _validator;
 
@@ -25,7 +28,7 @@ public sealed class CreateLocation
 
         if (await _locationRepository.NameExistsAsync(dto.Name, cancellationToken))
         {
-            throw new InvalidOperationException($"Location with name '{dto.Name}' already exists.");
+            throw new LocationAlreadyExistsException($"Location with name '{dto.Name}' already exists.");
         }
 
         var location = new Location(Guid.NewGuid(), dto.Name, dto.Address);
