@@ -23,7 +23,7 @@ public class DapperLocationRepository : ILocationRepository
         SELECT EXISTS(
         SELECT 1
         FROM locations
-        WHERE lower(name) = lower(@name))
+        WHERE lower(name) = lower(@Name))
         """;
         return await _connection.ExecuteScalarAsync<bool>(new CommandDefinition(sql, new { Name = name }, cancellationToken: cancellationToken));
     }
@@ -31,8 +31,8 @@ public class DapperLocationRepository : ILocationRepository
     public async Task AddAsync(Location location, CancellationToken cancellationToken)
     {
         const string sql = """
-        INSERT INTO locations (name, description)
-        VALUES (@Name, @Description)
+        INSERT INTO locations (id, name, address, created_at, updated_at)
+        VALUES (@Id, @Name, @Address, @CreatedAt, @UpdatedAt)
         """;
         try
         {
