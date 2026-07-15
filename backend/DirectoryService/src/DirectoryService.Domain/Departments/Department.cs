@@ -29,14 +29,14 @@ public class Department
     	? slug : string.Join(PathSeparator, parentDepartment.Path, slug);
         
         CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
-	}
+        UpdatedAt = DateTime.UtcNow; 
 
+	}
 	public Guid Id { get; private set; }
 
     public Guid? ParentId { get; private set; }
 
-	 private const char PathSeparator = '/';
+	private const char PathSeparator = '/';
 public string Name
 {
     get;
@@ -50,8 +50,8 @@ public string Name
     }
 }
 
+
     public string Slug { get; private set; }
-    
     private static readonly Regex SlugRegex = new(
         "^[a-z0-9]+(?:-[a-z0-9]+)*$",
         RegexOptions.CultureInvariant,

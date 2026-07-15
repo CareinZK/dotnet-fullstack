@@ -19,7 +19,7 @@ public sealed class PositionConfiguration : IEntityTypeConfiguration<Position>
         builder.Property(p => p.Name)
             .HasColumnName("name")
             .IsRequired()
-            .HasMaxLength(Constants.MaxStringLength);
+            .HasMaxLength(DbConstants.MaxStringLength);
 
         builder.Property(p => p.CreatedAt)
             .HasColumnName("created_at")

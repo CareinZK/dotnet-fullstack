@@ -19,12 +19,12 @@ public sealed class LocationConfiguration : IEntityTypeConfiguration<Location>
         builder.Property(l => l.Name)
             .HasColumnName("name")
             .IsRequired()
-            .HasMaxLength(Constants.MaxStringLength);
+            .HasMaxLength(DbConstants.MaxStringLength);
 
         builder.Property(l => l.Address)
             .HasColumnName("address")
             .IsRequired()
-            .HasMaxLength(Constants.MaxStringLength);
+            .HasMaxLength(DbConstants.MaxStringLength);
 
         builder.Property(l => l.CreatedAt)
             .HasColumnName("created_at")

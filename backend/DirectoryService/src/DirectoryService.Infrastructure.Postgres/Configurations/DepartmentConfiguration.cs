@@ -19,12 +19,12 @@ public sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departmen
         builder.Property(d => d.Name)
             .HasColumnName("name")
             .IsRequired()
-            .HasMaxLength(Constants.MaxStringLength);
+            .HasMaxLength(DbConstants.MaxStringLength);
 
         builder.Property(d => d.Slug)
             .HasColumnName("slug")
             .IsRequired()
-            .HasMaxLength(Constants.MaxStringLength);
+            .HasMaxLength(DbConstants.MaxStringLength);
 
         builder.Property(d => d.ParentId)
             .HasColumnName("parent_id")
@@ -33,7 +33,7 @@ public sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departmen
         builder.Property(d => d.Path)
             .HasColumnName("path")
             .IsRequired()
-            .HasMaxLength(Constants.MaxStringLength);
+            .HasMaxLength(DbConstants.MaxStringLength);
 
         builder.Property(d => d.CreatedAt)
             .HasColumnName("created_at")
