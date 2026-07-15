@@ -34,7 +34,22 @@ public class DapperLocationRepository : ILocationRepository
         INSERT INTO locations (name, description)
         VALUES (@Name, @Description)
         """;
-        await _connection.ExecuteAsync(new CommandDefinition(sql, location, cancellationToken: cancellationToken));
+        try
+        {
+            await _connection.ExecuteAsync(new CommandDefinition(sql, new
+            {
+                Id = location.Id,
+                Name = location.Name,
+                Address = location.Address,
+                CreatedAt = location.CreatedAt,
+                UpdatedAt = location.UpdatedAt
+            }, cancellationToken: cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save location {LocationId} with name {Name}", location.Id, location.Name);
+            throw;
+        }
     }
 
 }

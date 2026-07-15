@@ -23,6 +23,17 @@ builder.Services.AddScoped<IDbConnection>(_ =>
     return connection;
 });
 
+var repositoryImplementation = builder.Configuration["Repository:Implementation"] ?? "EfCore";
+
+if (repositoryImplementation.Equals("Dapper", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddScoped<ILocationRepository, DapperLocationRepository>();
+}
+else
+{
+    builder.Services.AddScoped<ILocationRepository, EfCoreLocationRepository>();
+}
+
 builder.Services.AddValidatorsFromAssemblyContaining<CreateLocationDtoValidator>();
 builder.Services.AddScoped<CreateLocation>();
 builder.Services.AddScoped<ILocationRepository, LocationRepository>();

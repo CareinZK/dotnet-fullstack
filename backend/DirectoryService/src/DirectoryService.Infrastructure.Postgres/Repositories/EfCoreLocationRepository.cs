@@ -3,7 +3,7 @@ using DirectoryService.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace DirectoryService.Infrastructure.Postgres;
+namespace DirectoryService.Infrastructure.Postgres.Repositories;
 
 public sealed class EfCoreLocationRepository : ILocationRepository
 {
@@ -23,18 +23,20 @@ public sealed class EfCoreLocationRepository : ILocationRepository
 
     }
 
-    public async Task<bool> AddLocationAsync(Location location, CancellationToken cancellationToken)
+    public async Task AddAsync(Location location, CancellationToken cancellationToken)
     {
         await _dbContext.Locations.AddAsync(location, cancellationToken);
         
-        if (await NameExistsAsync(location.Name, cancellationToken))
+        try
         {
-            _logger.LogError("Location with name '{Name}' already exists.", location.Name);
-            return false;
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
-
-       
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save location {LocationId} with name {Name}", location.Id, location.Name);
+            throw;
+        }
     }
+
+
 }
