@@ -31,6 +31,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 {
                     Status = StatusCodes.Status400BadRequest,
                     Title = "Validation failed."
+                    
                 };
 
                 await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
