@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using DirectoryService.Infrastructure.Postgres;
 using DirectoryService.Application.Locations;
+using DirectoryService.Contracts;
 using FluentValidation;
 using DirectoryService.Presentation;
 using Npgsql;
 using System.Data;
 using DirectoryService.Infrastructure.Postgres.Repositories;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,7 +38,9 @@ else
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateLocationDtoValidator>();
 builder.Services.AddScoped<CreateLocation>();
-builder.Services.AddScoped<ILocationRepository, LocationRepository>();
+builder.Services.AddScoped<ILocationsService, StubLocationsService>();
+builder.Services.AddScoped<IDepartmentsService, StubDepartmentsService>();
+builder.Services.AddScoped<IPositionsService, StubPositionsService>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -52,6 +56,7 @@ app.MapControllers();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 await app.RunAsync().ConfigureAwait(false);
