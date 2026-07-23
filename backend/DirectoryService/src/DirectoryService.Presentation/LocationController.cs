@@ -10,11 +10,16 @@ public sealed class LocationsController : ControllerBase
 {
     private readonly ILocationsService _locationsService;
     private readonly CreateLocation _createLocation;
+    private readonly UpdateLocationNameHandler _updateLocationNameHandler;
 
-    public LocationsController(ILocationsService locationsService, CreateLocation createLocation)
+    public LocationsController(
+        ILocationsService locationsService,
+        CreateLocation createLocation,
+        UpdateLocationNameHandler updateLocationNameHandler)
     {
         _locationsService = locationsService;
         _createLocation = createLocation;
+        _updateLocationNameHandler = updateLocationNameHandler;
     }
 
     [HttpPost]
@@ -83,4 +88,26 @@ public sealed class LocationsController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPatch("{id:guid}/name")]
+    public async Task<IActionResult> UpdateLocationName(
+        [FromRoute] Guid id,
+        [FromBody] UpdateLocationNameRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Id != id)
+        {
+            return BadRequest("The route id and request id do not match.");
+        }
+
+        var result = await _updateLocationNameHandler.Handle(request, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(result.Error);
+        }
+
+        return Ok(result.Value);
+    }
+
 }
