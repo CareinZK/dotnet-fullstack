@@ -52,4 +52,84 @@ public class DapperLocationRepository : ILocationRepository
         }
     }
 
+    public async Task<bool> UpdateAsync(Guid id, string name, string address, CancellationToken cancellationToken)
+    {
+        const string updateSql = """
+        UPDATE locations
+        SET name = @Name, address = @Address
+        WHERE id = @Id
+        """;
+
+        var rows = await _connection.ExecuteAsync(
+            new CommandDefinition(
+                updateSql,
+                new { Id = id, Name = name, Address = address },
+                cancellationToken: cancellationToken));
+
+        return rows > 0;
+    }
+
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        const string deleteSql = """
+        DELETE FROM locations
+        WHERE id = @Id
+        """;
+
+        var rows = await _connection.ExecuteAsync(
+            new CommandDefinition(
+                deleteSql,
+                new { Id = id },
+                cancellationToken: cancellationToken));
+
+        return rows > 0;
+    }
+
+    public async Task<IReadOnlyList<Location>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+        SELECT id, name, address, created_at AS CreatedAt, updated_at AS UpdatedAt
+        FROM locations
+        """;
+
+        var locations = await _connection.QueryAsync<Location>(new CommandDefinition(sql, cancellationToken: cancellationToken));
+        return locations.AsList();
+    }
+
+    public async Task<Location?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        const string sql = """
+        SELECT id, name, address, created_at AS CreatedAt, updated_at AS UpdatedAt
+        FROM locations
+        WHERE id = @Id
+        """;
+
+        return await _connection.QuerySingleOrDefaultAsync<Location>(
+            new CommandDefinition(sql, new { Id = id }, cancellationToken: cancellationToken));
+    }
+
+    public async Task UpdateLocationNameAsync(Guid id, string name, CancellationToken cancellationToken)
+    {
+
+        const string updateNameSql = """
+        UPDATE locations
+        SET name = @Name, updated_at = NOW()
+        WHERE id = @Id
+        """;
+
+        try
+        {
+            await _connection.ExecuteAsync(
+                new CommandDefinition(
+                    updateNameSql,
+                    new { Id = id, Name = name },
+                    cancellationToken: cancellationToken));
+   
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update location name to {Name}", name);
+            throw;
+        }
+    }
 }

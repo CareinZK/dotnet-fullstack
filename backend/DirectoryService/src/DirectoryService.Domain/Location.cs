@@ -2,56 +2,46 @@
 
 public class Location
 {
-	// Parameterless constructor for EF Core materialization
-	private Location()
-	{
-		Name = string.Empty;
-		Address = string.Empty;
-		CreatedAt = DateTime.UtcNow;
-		UpdatedAt = DateTime.UtcNow;
-	}
-
-      public Location(Guid id, string name, string address)
+    private Location()
     {
-        if (id != Guid.Empty)
-            this.Id = id;
-        else       
-        	throw new ArgumentException("Id cannot be empty.", nameof(id));
-        Name = name;
-        Address = address;
-        CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        Name = string.Empty;
+        Address = string.Empty;
     }
+
+    public Location(Guid id, string name, string address)
+    {
+        if (id == Guid.Empty)
+            throw new ArgumentException("Id cannot be empty.", nameof(id));
+
+        Id = id;
+        ChangeName(name);
+        ChangeAddress(address);
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = CreatedAt;
+    }
+
     public Guid Id { get; private set; }
-
     public DateTime CreatedAt { get; private set; }
-
     public DateTime UpdatedAt { get; private set; }
 
+    public string Name { get; private set; } = string.Empty;
+    public string Address { get; private set; } = string.Empty;
 
-    public string Name
-{
-    get;
-    set
+    public void ChangeName(string name)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            throw new ArgumentException("Location name cannot be empty.", nameof(value));
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Location name cannot be empty.", nameof(name));
 
-        field = value;
+        Name = name;
         UpdatedAt = DateTime.UtcNow;
     }
-}
 
-    public string Address
+    public void ChangeAddress(string address)
     {
-        get;
-        set
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentException("Location address cannot be empty.", nameof(value));
+        if (string.IsNullOrWhiteSpace(address))
+            throw new ArgumentException("Location address cannot be empty.", nameof(address));
 
-            field = value;
-            UpdatedAt = DateTime.UtcNow;
-        }
+        Address = address;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

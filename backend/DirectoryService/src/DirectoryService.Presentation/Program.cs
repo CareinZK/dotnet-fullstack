@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using DirectoryService.Infrastructure.Postgres;
 using DirectoryService.Application.Locations;
+using DirectoryService.Application.Departments;
 using DirectoryService.Contracts;
 using FluentValidation;
 using DirectoryService.Presentation;
@@ -25,21 +26,24 @@ builder.Services.AddScoped<IDbConnection>(_ =>
     return connection;
 });
 
-var repositoryImplementation = builder.Configuration["Repository:Implementation"] ?? "EfCore";
+var repositoryImplementation = builder.Configuration["Repository:Implementation"] ?? "EFCore";
 
 if (repositoryImplementation.Equals("Dapper", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.AddScoped<ILocationRepository, DapperLocationRepository>();
+    builder.Services.AddScoped<IDepartmentRepository, DapperDepartmentRepository>();
 }
 else
 {
     builder.Services.AddScoped<ILocationRepository, EfCoreLocationRepository>();
+    builder.Services.AddScoped<IDepartmentRepository, EfCoreDepartmentRepository>();
 }
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateLocationDtoValidator>();
 builder.Services.AddScoped<CreateLocation>();
-builder.Services.AddScoped<ILocationsService, StubLocationsService>();
-builder.Services.AddScoped<IDepartmentsService, StubDepartmentsService>();
+builder.Services.AddScoped<UpdateLocationNameHandler>();
+builder.Services.AddScoped<ILocationsService, LocationsService>();
+builder.Services.AddScoped<IDepartmentsService, DepartmentsService>();
 builder.Services.AddScoped<IPositionsService, StubPositionsService>();
 
 builder.Services.AddProblemDetails();
