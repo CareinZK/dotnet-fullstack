@@ -52,18 +52,18 @@ public class DapperLocationRepository : ILocationRepository
         }
     }
 
-    public async Task<bool> UpdateAsync(Guid id, string name, string address, CancellationToken cancellationToken)
+    public async Task<bool> UpdateAsync(Location location, CancellationToken cancellationToken)
     {
         const string updateSql = """
         UPDATE locations
-        SET name = @Name, address = @Address
+        SET name = @Name, address = @Address, updated_at = @UpdatedAt
         WHERE id = @Id
         """;
 
         var rows = await _connection.ExecuteAsync(
             new CommandDefinition(
                 updateSql,
-                new { Id = id, Name = name, Address = address },
+                new { location.Id, location.Name, location.Address, location.UpdatedAt },
                 cancellationToken: cancellationToken));
 
         return rows > 0;

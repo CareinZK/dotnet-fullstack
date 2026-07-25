@@ -54,6 +54,44 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
                 return true;
             }
 
+            case InvalidOperationException ex:
+            {
+                var isNotFound = ex.Message.EndsWith("was not found.", StringComparison.Ordinal)
+                    || ex.Message.Contains("is not linked", StringComparison.Ordinal);
+                var statusCode = isNotFound
+                    ? StatusCodes.Status404NotFound
+                    : StatusCodes.Status409Conflict;
+
+                httpContext.Response.StatusCode = statusCode;
+
+                await httpContext.Response.WriteAsJsonAsync(
+                    new ProblemDetails
+                    {
+                        Status = statusCode,
+                        Title = isNotFound ? "Resource not found" : "Conflict",
+                        Detail = ex.Message
+                    },
+                    cancellationToken);
+
+                return true;
+            }
+
+            case ArgumentException ex:
+            {
+                httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+
+                await httpContext.Response.WriteAsJsonAsync(
+                    new ProblemDetails
+                    {
+                        Status = StatusCodes.Status400BadRequest,
+                        Title = "Validation failed.",
+                        Detail = ex.Message
+                    },
+                    cancellationToken);
+
+                return true;
+            }
+
             default:
                 return false;
         }

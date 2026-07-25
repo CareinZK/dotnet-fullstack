@@ -93,9 +93,21 @@ public sealed class DapperDepartmentRepository : IDepartmentRepository
         }
     }
 
-    public async Task<bool> UpdateAsync(Guid id, string name, string address, CancellationToken cancellationToken)
+    public async Task<bool> UpdateAsync(Department department, CancellationToken cancellationToken)
     {
-        return false;
+        const string updateSql = """
+        UPDATE departments
+        SET name = @Name, updated_at = @UpdatedAt
+        WHERE id = @Id
+        """;
+
+        var rows = await _connection.ExecuteAsync(
+            new CommandDefinition(
+                updateSql,
+                new { department.Id, department.Name, department.UpdatedAt },
+                cancellationToken: cancellationToken));
+
+        return rows > 0;
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
@@ -160,5 +172,46 @@ public sealed class DapperDepartmentRepository : IDepartmentRepository
             _logger.LogError(ex, "Failed to update department name to {Name}", name);
             throw;
         }
+    }
+
+    public async Task<bool> LocationLinkExistsAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+        SELECT EXISTS(
+            SELECT 1
+            FROM department_locations
+            WHERE department_id = @DepartmentId AND location_id = @LocationId
+        )
+        """;
+
+        return await _connection.ExecuteScalarAsync<bool>(
+            new CommandDefinition(sql, new { DepartmentId = departmentId, LocationId = locationId }, cancellationToken: cancellationToken));
+    }
+
+    public async Task AddLocationLinkAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+        INSERT INTO department_locations (id, department_id, location_id, is_primary_location)
+        VALUES (@Id, @DepartmentId, @LocationId, FALSE)
+        """;
+
+        await _connection.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                new { Id = Guid.NewGuid(), DepartmentId = departmentId, LocationId = locationId },
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task<bool> RemoveLocationLinkAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+        DELETE FROM department_locations
+        WHERE department_id = @DepartmentId AND location_id = @LocationId
+        """;
+
+        var rows = await _connection.ExecuteAsync(
+            new CommandDefinition(sql, new { DepartmentId = departmentId, LocationId = locationId }, cancellationToken: cancellationToken));
+
+        return rows > 0;
     }
 }

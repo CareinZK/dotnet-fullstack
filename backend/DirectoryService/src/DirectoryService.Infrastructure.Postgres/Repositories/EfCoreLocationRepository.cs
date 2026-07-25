@@ -38,14 +38,14 @@ public sealed class EfCoreLocationRepository : ILocationRepository
         }
     }
 
-    public async Task<bool> UpdateAsync(Guid id, string name, string address, CancellationToken cancellationToken)
+    public async Task<bool> UpdateAsync(Location location, CancellationToken cancellationToken)
     {
         var rows = await _dbContext.Locations
-            .Where(l => l.Id == id)
+            .Where(l => l.Id == location.Id)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(l => l.Name, name)
-                .SetProperty(l => l.Address, address)
-                .SetProperty(l => l.UpdatedAt, DateTime.UtcNow), cancellationToken);
+                .SetProperty(l => l.Name, location.Name)
+                .SetProperty(l => l.Address, location.Address)
+                .SetProperty(l => l.UpdatedAt, location.UpdatedAt), cancellationToken);
 
         return rows > 0;
     }

@@ -52,7 +52,7 @@ public sealed class DepartmentsController : ControllerBase
         return Ok(department);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPatch("{id:guid}")]
     public async Task<IActionResult> UpdateDepartment(
         [FromRoute] Guid id,
         [FromBody] UpdateDepartmentDto departmentDto,
@@ -65,6 +65,26 @@ public sealed class DepartmentsController : ControllerBase
             return NotFound();
         }
 
+        return NoContent();
+    }
+
+    [HttpPost("{departmentId:guid}/locations/{locationId:guid}")]
+    public async Task<IActionResult> LinkLocation(
+        [FromRoute] Guid departmentId,
+        [FromRoute] Guid locationId,
+        CancellationToken cancellationToken)
+    {
+        await _departmentsService.LinkLocationAsync(departmentId, locationId, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("{departmentId:guid}/locations/{locationId:guid}")]
+    public async Task<IActionResult> UnlinkLocation(
+        [FromRoute] Guid departmentId,
+        [FromRoute] Guid locationId,
+        CancellationToken cancellationToken)
+    {
+        await _departmentsService.UnlinkLocationAsync(departmentId, locationId, cancellationToken);
         return NoContent();
     }
 

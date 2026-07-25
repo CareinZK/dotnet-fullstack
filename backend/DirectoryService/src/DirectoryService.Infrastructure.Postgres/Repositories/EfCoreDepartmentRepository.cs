@@ -52,9 +52,15 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         }
     }
 
-    public async Task<bool> UpdateAsync(Guid id, string name, string address, CancellationToken cancellationToken)
+    public async Task<bool> UpdateAsync(Department department, CancellationToken cancellationToken)
     {
-        return false;
+        var rows = await _dbContext.Departments
+            .Where(d => d.Id == department.Id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(d => d.Name, department.Name)
+                .SetProperty(d => d.UpdatedAt, department.UpdatedAt), cancellationToken);
+
+        return rows > 0;
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
@@ -87,5 +93,29 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         await _dbContext.Departments
             .Where(d => d.Id == id)
             .ExecuteUpdateAsync(s => s.SetProperty(d => d.Name, name), cancellationToken);
+    }
+
+    public Task<bool> LocationLinkExistsAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        return _dbContext.DepartmentLocations
+            .AnyAsync(link => link.DepartmentId == departmentId && link.LocationId == locationId, cancellationToken);
+    }
+
+    public async Task AddLocationLinkAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        await _dbContext.DepartmentLocations.AddAsync(
+            new DepartmentLocation(Guid.NewGuid(), departmentId, locationId, isPrimaryLocation: false),
+            cancellationToken);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> RemoveLocationLinkAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        var rows = await _dbContext.DepartmentLocations
+            .Where(link => link.DepartmentId == departmentId && link.LocationId == locationId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return rows > 0;
     }
 }

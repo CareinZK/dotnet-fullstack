@@ -15,6 +15,7 @@ public sealed class StubLocationsService : ILocationsService
     public Task<bool> UpdateAsync(Guid id, UpdateLocationDto dto, CancellationToken cancellationToken) => StubServiceResult.NotImplemented<bool>();
 
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken) => StubServiceResult.NotImplemented<bool>();
+
 }
 
 public sealed class StubDepartmentsService : IDepartmentsService
@@ -28,6 +29,10 @@ public sealed class StubDepartmentsService : IDepartmentsService
     public Task<bool> UpdateAsync(Guid id, UpdateDepartmentDto dto, CancellationToken cancellationToken) => StubServiceResult.NotImplemented<bool>();
 
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken) => StubServiceResult.NotImplemented<bool>();
+
+    public Task LinkLocationAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken) => StubServiceResult.NotImplemented();
+
+    public Task UnlinkLocationAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken) => StubServiceResult.NotImplemented();
 }
 
 public sealed class StubPositionsService : IPositionsService
@@ -47,4 +52,7 @@ file static class StubServiceResult
 {
     public static Task<T> NotImplemented<T>() =>
         Task.FromException<T>(new NotSupportedException("This API operation has not been implemented."));
+
+    public static Task NotImplemented() =>
+        Task.FromException(new NotSupportedException("This API operation has not been implemented."));
 }

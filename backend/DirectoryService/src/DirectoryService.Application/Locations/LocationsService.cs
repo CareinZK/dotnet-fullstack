@@ -42,7 +42,14 @@ public sealed class LocationsService : ILocationsService
 
     public async Task<bool> UpdateAsync(Guid id, UpdateLocationDto dto, CancellationToken cancellationToken)
     {
-        return await _locationRepository.UpdateAsync(id, dto.Name, dto.Address, cancellationToken);
+        var location = await _locationRepository.GetByIdAsync(id, cancellationToken);
+        if (location is null)
+        {
+            return false;
+        }
+
+        location.UpdateDetails(dto.Name, dto.Address);
+        return await _locationRepository.UpdateAsync(location, cancellationToken);
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)

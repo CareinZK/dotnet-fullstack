@@ -61,14 +61,58 @@ public sealed class DepartmentsService : IDepartmentsService
         return department is null ? null : Map(department, []);
     }
 
-    public Task<bool> UpdateAsync(Guid id, UpdateDepartmentDto dto, CancellationToken cancellationToken)
+    public async Task<bool> UpdateAsync(Guid id, UpdateDepartmentDto dto, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var department = await _departmentRepository.GetByIdAsync(id, cancellationToken);
+        if (department is null)
+        {
+            return false;
+        }
+
+        department.ChangeName(dto.Name);
+        return await _departmentRepository.UpdateAsync(department, cancellationToken);
     }
 
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
+    }
+
+    public async Task LinkLocationAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        await EnsureDepartmentAndLocationExistAsync(departmentId, locationId, cancellationToken);
+
+        if (await _departmentRepository.LocationLinkExistsAsync(departmentId, locationId, cancellationToken))
+        {
+            throw new InvalidOperationException($"Location '{locationId}' is already linked to department '{departmentId}'.");
+        }
+
+        await _departmentRepository.AddLocationLinkAsync(departmentId, locationId, cancellationToken);
+    }
+
+    public async Task UnlinkLocationAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        await EnsureDepartmentAndLocationExistAsync(departmentId, locationId, cancellationToken);
+
+        if (!await _departmentRepository.RemoveLocationLinkAsync(departmentId, locationId, cancellationToken))
+        {
+            throw new InvalidOperationException($"Location '{locationId}' is not linked to department '{departmentId}'.");
+        }
+    }
+
+    private async Task EnsureDepartmentAndLocationExistAsync(Guid departmentId, Guid locationId, CancellationToken cancellationToken)
+    {
+        var department = await _departmentRepository.GetByIdAsync(departmentId, cancellationToken);
+        if (department is null)
+        {
+            throw new InvalidOperationException($"Department with id '{departmentId}' was not found.");
+        }
+
+        var location = await _locationRepository.GetByIdAsync(locationId, cancellationToken);
+        if (location is null)
+        {
+            throw new InvalidOperationException($"Location with id '{locationId}' was not found.");
+        }
     }
 
     private static DepartmentDto Map(Department department, IReadOnlyCollection<Guid>? locationIds)

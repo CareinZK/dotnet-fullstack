@@ -44,4 +44,17 @@ public class Location
         Address = address;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public void UpdateDetails(string name, string address)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Location name cannot be empty.", nameof(name));
+
+        if (string.IsNullOrWhiteSpace(address))
+            throw new ArgumentException("Location address cannot be empty.", nameof(address));
+
+        Name = name;
+        Address = address;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }

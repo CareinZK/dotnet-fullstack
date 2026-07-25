@@ -64,6 +64,17 @@ public class Department
 
     public DateTime UpdatedAt { get; private set; }
 
+    public void ChangeName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Department name cannot be empty.", nameof(name));
+        }
+
+        Name = name;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     private static string BuildPath(Department? parentDepartment, string slug)
     {
         return parentDepartment is null

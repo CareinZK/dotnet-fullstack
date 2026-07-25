@@ -58,7 +58,7 @@ public sealed class LocationsController : ControllerBase
         return Ok(location);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPatch("{id:guid}")]
     public async Task<IActionResult> UpdateLocation(
         [FromRoute] Guid id,
         [FromBody] UpdateLocationDto locationDto,
