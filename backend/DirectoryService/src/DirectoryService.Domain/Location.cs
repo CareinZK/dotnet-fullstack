@@ -1,4 +1,7 @@
-﻿namespace DirectoryService.Domain;
+using CSharpFunctionalExtensions;
+using DirectoryService.Domain.Common;
+
+namespace DirectoryService.Domain;
 
 public class Location
 {
@@ -8,16 +11,33 @@ public class Location
         Address = string.Empty;
     }
 
-    public Location(Guid id, string name, string address)
+    private Location(Guid id, string name, string address)
     {
-        if (id == Guid.Empty)
-            throw new ArgumentException("Id cannot be empty.", nameof(id));
-
         Id = id;
-        ChangeName(name);
-        ChangeAddress(address);
+        Name = name;
+        Address = address;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = CreatedAt;
+    }
+
+    public static Result<Location, Error> Create(Guid id, string name, string address)
+    {
+        if (id == Guid.Empty)
+        {
+            return Error.Validation("location.id.invalid", "Id cannot be empty.", nameof(id));
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Error.Validation("location.name.invalid", "Location name cannot be empty.", nameof(name));
+        }
+
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return Error.Validation("location.address.invalid", "Location address cannot be empty.", nameof(address));
+        }
+
+        return new Location(id, name.Trim(), address.Trim());
     }
 
     public Guid Id { get; private set; }
@@ -27,21 +47,45 @@ public class Location
     public string Name { get; private set; } = string.Empty;
     public string Address { get; private set; } = string.Empty;
 
-    public void ChangeName(string name)
+    public UnitResult<Error> ChangeName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Location name cannot be empty.", nameof(name));
+        {
+            return Error.Validation("location.name.invalid", "Location name cannot be empty.", nameof(name));
+        }
 
-        Name = name;
+        Name = name.Trim();
         UpdatedAt = DateTime.UtcNow;
+        return UnitResult.Success<Error>();
     }
 
-    public void ChangeAddress(string address)
+    public UnitResult<Error> ChangeAddress(string address)
     {
         if (string.IsNullOrWhiteSpace(address))
-            throw new ArgumentException("Location address cannot be empty.", nameof(address));
+        {
+            return Error.Validation("location.address.invalid", "Location address cannot be empty.", nameof(address));
+        }
 
-        Address = address;
+        Address = address.Trim();
         UpdatedAt = DateTime.UtcNow;
+        return UnitResult.Success<Error>();
+    }
+
+    public UnitResult<Error> UpdateDetails(string name, string address)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Error.Validation("location.name.invalid", "Location name cannot be empty.", nameof(name));
+        }
+
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return Error.Validation("location.address.invalid", "Location address cannot be empty.", nameof(address));
+        }
+
+        Name = name.Trim();
+        Address = address.Trim();
+        UpdatedAt = DateTime.UtcNow;
+        return UnitResult.Success<Error>();
     }
 }

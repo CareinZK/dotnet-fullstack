@@ -1,5 +1,7 @@
+using CSharpFunctionalExtensions;
 using DirectoryService.Application.Locations;
 using DirectoryService.Domain;
+using DirectoryService.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -7,12 +9,6 @@ namespace DirectoryService.Infrastructure.Postgres.Repositories;
 
 public sealed class EfCoreLocationRepository : ILocationRepository
 {
- public async Task<bool> NameExistsAsync(string name, CancellationToken cancellationToken)
-    {
-        return await _dbContext.Locations
-        .AnyAsync(l => l.Name.ToLower() == name.ToLower(), cancellationToken);
-    }
-
     private readonly AppDbContext _dbContext;
     private readonly ILogger<EfCoreLocationRepository> _logger;
 
@@ -20,64 +16,144 @@ public sealed class EfCoreLocationRepository : ILocationRepository
     {
         _dbContext = dbContext;
         _logger = logger;
-
     }
 
-    public async Task AddAsync(Location location, CancellationToken cancellationToken)
+    public async Task<Result<bool, Error>> NameExistsAsync(string name, CancellationToken cancellationToken)
     {
-        await _dbContext.Locations.AddAsync(location, cancellationToken);
-        
         try
         {
+            var exists = await _dbContext.Locations
+                .AnyAsync(l => l.Name.ToLower() == name.ToLower(), cancellationToken);
+            return Result.Success<bool, Error>(exists);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check if location name {Name} exists.", name);
+            return Error.Failure("database.error", "A database error occurred while checking if location name exists.");
+        }
+    }
+
+    public async Task<UnitResult<Error>> AddAsync(Location location, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _dbContext.Locations.AddAsync(location, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
+            return UnitResult.Success<Error>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save location {LocationId} with name {Name}", location.Id, location.Name);
-            throw;
+            return Error.Failure("database.error", "A database error occurred while saving location.");
         }
     }
 
-    public async Task<bool> UpdateAsync(Guid id, string name, string address, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<Location>, Error>> GetAllAsync(CancellationToken cancellationToken)
     {
-        var rows = await _dbContext.Locations
-            .Where(l => l.Id == id)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(l => l.Name, name)
-                .SetProperty(l => l.Address, address)
-                .SetProperty(l => l.UpdatedAt, DateTime.UtcNow), cancellationToken);
-
-        return rows > 0;
+        try
+        {
+            var locations = await _dbContext.Locations
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+            return Result.Success<IReadOnlyList<Location>, Error>(locations);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch all locations.");
+            return Error.Failure("database.error", "A database error occurred while fetching locations.");
+        }
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Result<Location, Error>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        var rows = await _dbContext.Locations
-            .Where(l => l.Id == id)
-            .ExecuteDeleteAsync(cancellationToken);
+        try
+        {
+            var location = await _dbContext.Locations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
 
-        return rows > 0;
+            if (location is null)
+            {
+                return Errors.Location.NotFound(id);
+            }
+
+            return Result.Success<Location, Error>(location);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch location by id {LocationId}", id);
+            return Error.Failure("database.error", "A database error occurred while fetching location.");
+        }
     }
 
-    public async Task<IReadOnlyList<Location>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<UnitResult<Error>> UpdateAsync(Location location, CancellationToken cancellationToken)
     {
-        return await _dbContext.Locations
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        try
+        {
+            var rows = await _dbContext.Locations
+                .Where(l => l.Id == location.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(l => l.Name, location.Name)
+                    .SetProperty(l => l.Address, location.Address)
+                    .SetProperty(l => l.UpdatedAt, location.UpdatedAt), cancellationToken);
+
+            if (rows == 0)
+            {
+                return Errors.Location.NotFound(location.Id);
+            }
+
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update location {LocationId}", location.Id);
+            return Error.Failure("database.error", "A database error occurred while updating location.");
+        }
     }
 
-    public async Task<Location?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<UnitResult<Error>> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
-        var location = await _dbContext.Locations
-            .AsNoTracking()
-            .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
-        return location;
+        try
+        {
+            var rows = await _dbContext.Locations
+                .Where(l => l.Id == id)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            if (rows == 0)
+            {
+                return Errors.Location.NotFound(id);
+            }
+
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete location {LocationId}", id);
+            return Error.Failure("database.error", "A database error occurred while deleting location.");
+        }
     }
 
-    public async Task UpdateLocationNameAsync(Guid id, string name, CancellationToken cancellationToken)
+    public async Task<UnitResult<Error>> UpdateLocationNameAsync(Guid id, string name, CancellationToken cancellationToken)
     {
-        await _dbContext.Locations
-            .Where(l => l.Id == id)
-            .ExecuteUpdateAsync(s => s.SetProperty(l => l.Name, name), cancellationToken);
+        try
+        {
+            var rows = await _dbContext.Locations
+                .Where(l => l.Id == id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(l => l.Name, name)
+                    .SetProperty(l => l.UpdatedAt, DateTime.UtcNow), cancellationToken);
+
+            if (rows == 0)
+            {
+                return Errors.Location.NotFound(id);
+            }
+
+            return UnitResult.Success<Error>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update location name for {LocationId}", id);
+            return Error.Failure("database.error", "A database error occurred while updating location name.");
+        }
     }
 }

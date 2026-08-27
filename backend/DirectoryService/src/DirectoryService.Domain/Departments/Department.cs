@@ -1,6 +1,8 @@
-﻿namespace DirectoryService.Domain.Departments;
-
 using System.Text.RegularExpressions;
+using CSharpFunctionalExtensions;
+using DirectoryService.Domain.Common;
+
+namespace DirectoryService.Domain.Departments;
 
 public class Department
 {
@@ -21,21 +23,6 @@ public class Department
 
     private Department(Guid id, string name, string slug, Department? parentDepartment)
     {
-        if (id == Guid.Empty)
-        {
-            throw new ArgumentException("Id cannot be empty.", nameof(id));
-        }
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("Department name cannot be empty.", nameof(name));
-        }
-
-        if (string.IsNullOrWhiteSpace(slug) || !SlugRegex.IsMatch(slug))
-        {
-            throw new ArgumentException("Department slug must be a non-empty URL-safe string (lowercase letters, digits, hyphens).", nameof(slug));
-        }
-
         Id = id;
         Name = name;
         Slug = slug;
@@ -45,9 +32,24 @@ public class Department
         UpdatedAt = CreatedAt;
     }
 
-    public static Department Create(Guid id, string name, string slug, Department? parentDepartment)
+    public static Result<Department, Error> Create(Guid id, string name, string slug, Department? parentDepartment)
     {
-        return new Department(id, name, slug, parentDepartment);
+        if (id == Guid.Empty)
+        {
+            return Error.Validation("department.id.invalid", "Id cannot be empty.", nameof(id));
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Error.Validation("department.name.invalid", "Department name cannot be empty.", nameof(name));
+        }
+
+        if (string.IsNullOrWhiteSpace(slug) || !SlugRegex.IsMatch(slug))
+        {
+            return Error.Validation("department.slug.invalid", "Department slug must be a non-empty URL-safe string (lowercase letters, digits, hyphens).", nameof(slug));
+        }
+
+        return new Department(id, name.Trim(), slug.Trim(), parentDepartment);
     }
 
     public Guid Id { get; private set; }
@@ -63,6 +65,18 @@ public class Department
     public DateTime CreatedAt { get; private set; }
 
     public DateTime UpdatedAt { get; private set; }
+
+    public UnitResult<Error> ChangeName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Error.Validation("department.name.invalid", "Department name cannot be empty.", nameof(name));
+        }
+
+        Name = name.Trim();
+        UpdatedAt = DateTime.UtcNow;
+        return UnitResult.Success<Error>();
+    }
 
     private static string BuildPath(Department? parentDepartment, string slug)
     {

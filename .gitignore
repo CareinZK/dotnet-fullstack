@@ -475,3 +475,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# AI / Context snapshots
+**/docs/snapshots/
+docs/snapshots/
+

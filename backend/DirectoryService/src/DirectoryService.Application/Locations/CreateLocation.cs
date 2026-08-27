@@ -1,14 +1,14 @@
+using CSharpFunctionalExtensions;
+using DirectoryService.Application.Common;
 using DirectoryService.Contracts;
 using DirectoryService.Domain;
+using DirectoryService.Domain.Common;
 using FluentValidation;
-using DirectoryService.Application.Exceptions;
-
 
 namespace DirectoryService.Application.Locations;
 
 public sealed class CreateLocation
 {
-    
     private readonly ILocationRepository _locationRepository;
     private readonly IValidator<CreateLocationDto> _validator;
 
@@ -18,22 +18,37 @@ public sealed class CreateLocation
         _validator = validator;
     }
 
-    public async Task<Guid> ExecuteAsync(CreateLocationDto dto, CancellationToken cancellationToken)
+    public async Task<Result<Guid, ErrorList>> ExecuteAsync(CreateLocationDto dto, CancellationToken cancellationToken)
     {
         var validationResult = await _validator.ValidateAsync(dto, cancellationToken);
         if (!validationResult.IsValid)
         {
-            throw new ValidationException(validationResult.Errors);
+            return validationResult.ToErrorList();
         }
 
-        if (await _locationRepository.NameExistsAsync(dto.Name, cancellationToken))
+        var nameExistsResult = await _locationRepository.NameExistsAsync(dto.Name, cancellationToken);
+        if (nameExistsResult.IsFailure)
         {
-            throw new LocationAlreadyExistsException($"Location with name '{dto.Name}' already exists.");
+            return nameExistsResult.Error.ToErrorList();
         }
 
-        var location = new Location(Guid.NewGuid(), dto.Name, dto.Address);
-        await _locationRepository.AddAsync(location, cancellationToken);
+        if (nameExistsResult.Value)
+        {
+            return Errors.Location.AlreadyExists(dto.Name).ToErrorList();
+        }
 
-        return location.Id;
+        var locationResult = Location.Create(Guid.NewGuid(), dto.Name, dto.Address);
+        if (locationResult.IsFailure)
+        {
+            return locationResult.Error.ToErrorList();
+        }
+
+        var addResult = await _locationRepository.AddAsync(locationResult.Value, cancellationToken);
+        if (addResult.IsFailure)
+        {
+            return addResult.Error.ToErrorList();
+        }
+
+        return Result.Success<Guid, ErrorList>(locationResult.Value.Id);
     }
 }

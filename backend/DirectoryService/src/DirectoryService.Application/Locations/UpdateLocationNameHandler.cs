@@ -1,27 +1,38 @@
 using CSharpFunctionalExtensions;
+using DirectoryService.Application.Common;
 using DirectoryService.Contracts;
+using DirectoryService.Domain.Common;
+using FluentValidation;
 
 namespace DirectoryService.Application.Locations;
 
 public sealed class UpdateLocationNameHandler
 {
     private readonly ILocationRepository _repository;
+    private readonly IValidator<UpdateLocationNameRequest> _validator;
 
-    public UpdateLocationNameHandler(ILocationRepository locationRepository)
+    public UpdateLocationNameHandler(
+        ILocationRepository locationRepository,
+        IValidator<UpdateLocationNameRequest> validator)
     {
         _repository = locationRepository;
+        _validator = validator;
     }
 
-    public async Task<Result<Guid>> Handle(UpdateLocationNameRequest request, CancellationToken cancellationToken)
+    public async Task<Result<Guid, ErrorList>> Handle(UpdateLocationNameRequest request, CancellationToken cancellationToken)
     {
-        try
+        var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+        if (!validationResult.IsValid)
         {
-            await _repository.UpdateLocationNameAsync(request.Id, request.Name, cancellationToken);
-            return Result.Success<Guid>(request.Id);
+            return validationResult.ToErrorList();
         }
-        catch (Exception ex)
+
+        var updateResult = await _repository.UpdateLocationNameAsync(request.Id, request.Name, cancellationToken);
+        if (updateResult.IsFailure)
         {
-            return Result.Failure<Guid>($"Failed to update location name: {ex.Message}");
+            return updateResult.Error.ToErrorList();
         }
+
+        return Result.Success<Guid, ErrorList>(request.Id);
     }
 }

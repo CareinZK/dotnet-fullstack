@@ -29,6 +29,9 @@ public sealed class DepartmentLocationConfiguration : IEntityTypeConfiguration<D
             .HasColumnName("is_primary_location")
             .IsRequired();
 
+        builder.HasIndex(dl => new { dl.DepartmentId, dl.LocationId })
+            .IsUnique();
+
         builder.HasOne<Department>()
             .WithMany()
             .HasForeignKey(dl => dl.DepartmentId)
