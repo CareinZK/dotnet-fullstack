@@ -1,6 +1,9 @@
+using CSharpFunctionalExtensions;
+using DirectoryService.Application.Common;
 using DirectoryService.Contracts;
-using DirectoryService.Application.Exceptions;
 using DirectoryService.Domain;
+using DirectoryService.Domain.Common;
+using FluentValidation;
 
 namespace DirectoryService.Application.Locations;
 
@@ -8,53 +11,97 @@ public sealed class LocationsService : ILocationsService
 {
     private readonly ILocationRepository _locationRepository;
     private readonly CreateLocation _createLocation;
+    private readonly IValidator<UpdateLocationDto> _updateValidator;
 
-    public LocationsService(ILocationRepository locationRepository, CreateLocation createLocation)
+    public LocationsService(
+        ILocationRepository locationRepository,
+        CreateLocation createLocation,
+        IValidator<UpdateLocationDto> updateValidator)
     {
         _locationRepository = locationRepository;
         _createLocation = createLocation;
+        _updateValidator = updateValidator;
     }
 
-    public async Task<LocationDto> CreateAsync(CreateLocationDto dto, CancellationToken cancellationToken)
+    public async Task<Result<LocationDto, ErrorList>> CreateAsync(CreateLocationDto dto, CancellationToken cancellationToken)
     {
-        var id = await _createLocation.ExecuteAsync(dto, cancellationToken);
-        var location = await _locationRepository.GetByIdAsync(id, cancellationToken);
-
-        if (location is null)
+        var result = await _createLocation.ExecuteAsync(dto, cancellationToken);
+        if (result.IsFailure)
         {
-            throw new InvalidOperationException("Created location was not found after persistence.");
+            return result.Error;
         }
 
-        return Map(location);
-    }
-
-    public async Task<IReadOnlyList<LocationDto>> GetAllAsync(CancellationToken cancellationToken)
-    {
-        var locations = await _locationRepository.GetAllAsync(cancellationToken);
-        return locations.Select(Map).ToList();
-    }
-
-    public async Task<LocationDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-    {
-        var location = await _locationRepository.GetByIdAsync(id, cancellationToken);
-        return location is null ? null : Map(location);
-    }
-
-    public async Task<bool> UpdateAsync(Guid id, UpdateLocationDto dto, CancellationToken cancellationToken)
-    {
-        var location = await _locationRepository.GetByIdAsync(id, cancellationToken);
-        if (location is null)
+        var locationResult = await _locationRepository.GetByIdAsync(result.Value, cancellationToken);
+        if (locationResult.IsFailure)
         {
-            return false;
+            return locationResult.Error.ToErrorList();
         }
 
-        location.UpdateDetails(dto.Name, dto.Address);
-        return await _locationRepository.UpdateAsync(location, cancellationToken);
+        return Map(locationResult.Value);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<LocationDto>, ErrorList>> GetAllAsync(CancellationToken cancellationToken)
     {
-        return await _locationRepository.DeleteAsync(id, cancellationToken);
+        var locationsResult = await _locationRepository.GetAllAsync(cancellationToken);
+        if (locationsResult.IsFailure)
+        {
+            return locationsResult.Error.ToErrorList();
+        }
+
+        IReadOnlyList<LocationDto> dtos = locationsResult.Value.Select(Map).ToList();
+        return Result.Success<IReadOnlyList<LocationDto>, ErrorList>(dtos);
+    }
+
+    public async Task<Result<LocationDto, ErrorList>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var locationResult = await _locationRepository.GetByIdAsync(id, cancellationToken);
+        if (locationResult.IsFailure)
+        {
+            return locationResult.Error.ToErrorList();
+        }
+
+        return Map(locationResult.Value);
+    }
+
+    public async Task<UnitResult<ErrorList>> UpdateAsync(Guid id, UpdateLocationDto dto, CancellationToken cancellationToken)
+    {
+        var validationResult = await _updateValidator.ValidateAsync(dto, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            return validationResult.ToErrorList();
+        }
+
+        var locationResult = await _locationRepository.GetByIdAsync(id, cancellationToken);
+        if (locationResult.IsFailure)
+        {
+            return locationResult.Error.ToErrorList();
+        }
+
+        var location = locationResult.Value;
+        var updateDetailsResult = location.UpdateDetails(dto.Name, dto.Address);
+        if (updateDetailsResult.IsFailure)
+        {
+            return updateDetailsResult.Error.ToErrorList();
+        }
+
+        var updateRepoResult = await _locationRepository.UpdateAsync(location, cancellationToken);
+        if (updateRepoResult.IsFailure)
+        {
+            return updateRepoResult.Error.ToErrorList();
+        }
+
+        return UnitResult.Success<ErrorList>();
+    }
+
+    public async Task<UnitResult<ErrorList>> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var deleteResult = await _locationRepository.DeleteAsync(id, cancellationToken);
+        if (deleteResult.IsFailure)
+        {
+            return deleteResult.Error.ToErrorList();
+        }
+
+        return UnitResult.Success<ErrorList>();
     }
 
     private static LocationDto Map(Location location) =>

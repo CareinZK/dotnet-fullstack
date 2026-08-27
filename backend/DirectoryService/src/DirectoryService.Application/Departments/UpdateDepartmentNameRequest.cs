@@ -1,12 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+namespace DirectoryService.Contracts;
 
-namespace DirectoryService.Application.Departments
-{
-    public class UpdateDepartmentNameRequest
-    {
-        
-    }
-}
+public record UpdateDepartmentNameRequest(Guid Id, string Name);
