@@ -1,91 +1,64 @@
-using Microsoft.AspNetCore.Mvc;
+using DirectoryService.Application.Departments;
 using DirectoryService.Contracts;
+using DirectoryService.Domain.Common;
+using DirectoryService.Presentation.Common;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DirectoryService.Presentation;
 
 [ApiController]
 [Route("departments")]
-#pragma warning disable CA1515 // Consider making public types internal
 public sealed class DepartmentsController : ControllerBase
-#pragma warning restore CA1515 // Consider making public types internal
 {
     private readonly IDepartmentsService _departmentsService;
+    private readonly UpdateDepartmentNameHandler _updateDepartmentNameHandler;
 
-    public DepartmentsController(IDepartmentsService departmentsService)
+    public DepartmentsController(
+        IDepartmentsService departmentsService,
+        UpdateDepartmentNameHandler updateDepartmentNameHandler)
     {
         _departmentsService = departmentsService;
+        _updateDepartmentNameHandler = updateDepartmentNameHandler;
     }
 
     [HttpPost]
-    public async Task<ActionResult<DepartmentDto>> CreateDepartment(
+    public async Task<IActionResult> CreateDepartment(
         [FromBody] CreateDepartmentDto departmentDto,
         CancellationToken cancellationToken)
     {
-        var createdDepartment = await _departmentsService.CreateAsync(departmentDto, cancellationToken);
+        var result = await _departmentsService.CreateAsync(departmentDto, cancellationToken);
 
-        return CreatedAtAction(
+        return result.ToCreatedAtActionResult(
             nameof(GetDepartmentById),
-            new { id = createdDepartment.Id },
-            createdDepartment);
+            new { id = result.IsSuccess ? result.Value.Id : Guid.Empty });
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<DepartmentDto>>> GetDepartments(
+    public async Task<IActionResult> GetDepartments(
         CancellationToken cancellationToken)
     {
-        var departments = await _departmentsService.GetAllAsync(cancellationToken);
-        return Ok(departments);
+        var result = await _departmentsService.GetAllAsync(cancellationToken);
+        return result.ToActionResult();
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<DepartmentDto>> GetDepartmentById(
+    public async Task<IActionResult> GetDepartmentById(
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var department = await _departmentsService.GetByIdAsync(id, cancellationToken);
-
-        if (department is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(department);
+        var result = await _departmentsService.GetByIdAsync(id, cancellationToken);
+        return result.ToActionResult();
     }
 
+    [HttpPut("{id:guid}")]
     [HttpPatch("{id:guid}")]
     public async Task<IActionResult> UpdateDepartment(
         [FromRoute] Guid id,
         [FromBody] UpdateDepartmentDto departmentDto,
         CancellationToken cancellationToken)
     {
-        var updated = await _departmentsService.UpdateAsync(id, departmentDto, cancellationToken);
-
-        if (!updated)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
-    }
-
-    [HttpPost("{departmentId:guid}/locations/{locationId:guid}")]
-    public async Task<IActionResult> LinkLocation(
-        [FromRoute] Guid departmentId,
-        [FromRoute] Guid locationId,
-        CancellationToken cancellationToken)
-    {
-        await _departmentsService.LinkLocationAsync(departmentId, locationId, cancellationToken);
-        return NoContent();
-    }
-
-    [HttpDelete("{departmentId:guid}/locations/{locationId:guid}")]
-    public async Task<IActionResult> UnlinkLocation(
-        [FromRoute] Guid departmentId,
-        [FromRoute] Guid locationId,
-        CancellationToken cancellationToken)
-    {
-        await _departmentsService.UnlinkLocationAsync(departmentId, locationId, cancellationToken);
-        return NoContent();
+        var result = await _departmentsService.UpdateAsync(id, departmentDto, cancellationToken);
+        return result.ToNoContentActionResult();
     }
 
     [HttpDelete("{id:guid}")]
@@ -93,13 +66,23 @@ public sealed class DepartmentsController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var deleted = await _departmentsService.DeleteAsync(id, cancellationToken);
+        var result = await _departmentsService.DeleteAsync(id, cancellationToken);
+        return result.ToNoContentActionResult();
+    }
 
-        if (!deleted)
+    [HttpPatch("{id:guid}/name")]
+    public async Task<IActionResult> UpdateDepartmentName(
+        [FromRoute] Guid id,
+        [FromBody] UpdateDepartmentNameRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Id != id)
         {
-            return NotFound();
+            ErrorList error = Errors.General.ValueIsInvalid(nameof(request.Id), "The route id and request id do not match.");
+            return error.ToActionResult();
         }
 
-        return NoContent();
+        var result = await _updateDepartmentNameHandler.Handle(request, cancellationToken);
+        return result.ToActionResult();
     }
 }

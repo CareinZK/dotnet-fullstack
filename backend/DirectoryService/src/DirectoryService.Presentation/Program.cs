@@ -1,17 +1,16 @@
-using Microsoft.EntityFrameworkCore;
-using DirectoryService.Infrastructure.Postgres;
-using DirectoryService.Application.Locations;
-using DirectoryService.Application.Departments;
-using DirectoryService.Contracts;
-using FluentValidation;
-using DirectoryService.Presentation;
-using Npgsql;
 using System.Data;
+using DirectoryService.Application.Departments;
+using DirectoryService.Application.Locations;
+using DirectoryService.Contracts;
+using DirectoryService.Infrastructure.Postgres;
 using DirectoryService.Infrastructure.Postgres.Repositories;
+using DirectoryService.Presentation;
+using FluentValidation;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
@@ -42,6 +41,8 @@ else
 builder.Services.AddValidatorsFromAssemblyContaining<CreateLocationDtoValidator>();
 builder.Services.AddScoped<CreateLocation>();
 builder.Services.AddScoped<UpdateLocationNameHandler>();
+builder.Services.AddScoped<CreateDepartment>();
+builder.Services.AddScoped<UpdateDepartmentNameHandler>();
 builder.Services.AddScoped<ILocationsService, LocationsService>();
 builder.Services.AddScoped<IDepartmentsService, DepartmentsService>();
 builder.Services.AddScoped<IPositionsService, StubPositionsService>();

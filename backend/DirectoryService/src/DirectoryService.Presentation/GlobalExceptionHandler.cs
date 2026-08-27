@@ -1,7 +1,5 @@
-using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using DirectoryService.Application.Exceptions;
 
 namespace DirectoryService.Presentation;
 
@@ -9,91 +7,30 @@ namespace DirectoryService.Presentation;
 public sealed class GlobalExceptionHandler : IExceptionHandler
 #pragma warning restore CA1515 // Consider making public types internal
 {
+    private readonly ILogger<GlobalExceptionHandler> _logger;
+
+    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
+    {
+        _logger = logger;
+    }
+
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
     {
-        switch (exception)
+        _logger.LogError(exception, "An unhandled exception occurred: {Message}", exception.Message);
+
+        httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
+        var problemDetails = new ProblemDetails
         {
-            case ValidationException validationException:
-            {
-                var errors = validationException.Errors
-                    .GroupBy(x => x.PropertyName, StringComparer.Ordinal)
-                    .ToDictionary(
-                        g => g.Key,
-                        g => g.Select(x => x.ErrorMessage).ToArray(),
-                        StringComparer.Ordinal);
+            Status = StatusCodes.Status500InternalServerError,
+            Title = "Internal Server Error",
+            Detail = "An unexpected error occurred."
+        };
 
-                httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-
-                var problemDetails = new ValidationProblemDetails(errors)
-                {
-                    Status = StatusCodes.Status400BadRequest,
-                    Title = "Validation failed."
-                    
-                };
-
-                await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
-                return true;
-            }
-
-            case LocationAlreadyExistsException ex:
-            {
-                httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-
-                await httpContext.Response.WriteAsJsonAsync(
-                    new ProblemDetails
-                    {
-                        Status = StatusCodes.Status409Conflict,
-                        Title = "Conflict",
-                        Detail = ex.Message
-                    },
-                    cancellationToken);
-
-                return true;
-            }
-
-            case InvalidOperationException ex:
-            {
-                var isNotFound = ex.Message.EndsWith("was not found.", StringComparison.Ordinal)
-                    || ex.Message.Contains("is not linked", StringComparison.Ordinal);
-                var statusCode = isNotFound
-                    ? StatusCodes.Status404NotFound
-                    : StatusCodes.Status409Conflict;
-
-                httpContext.Response.StatusCode = statusCode;
-
-                await httpContext.Response.WriteAsJsonAsync(
-                    new ProblemDetails
-                    {
-                        Status = statusCode,
-                        Title = isNotFound ? "Resource not found" : "Conflict",
-                        Detail = ex.Message
-                    },
-                    cancellationToken);
-
-                return true;
-            }
-
-            case ArgumentException ex:
-            {
-                httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-
-                await httpContext.Response.WriteAsJsonAsync(
-                    new ProblemDetails
-                    {
-                        Status = StatusCodes.Status400BadRequest,
-                        Title = "Validation failed.",
-                        Detail = ex.Message
-                    },
-                    cancellationToken);
-
-                return true;
-            }
-
-            default:
-                return false;
-        }
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        return true;
     }
 }

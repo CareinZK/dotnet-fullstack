@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
 using DirectoryService.Contracts;
+using DirectoryService.Presentation.Common;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DirectoryService.Presentation;
 
@@ -17,39 +18,32 @@ public sealed class PositionsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<PositionDto>> CreatePosition(
+    public async Task<IActionResult> CreatePosition(
         [FromBody] CreatePositionDto positionDto,
         CancellationToken cancellationToken)
     {
-        var createdPosition = await _positionsService.CreateAsync(positionDto, cancellationToken);
+        var result = await _positionsService.CreateAsync(positionDto, cancellationToken);
 
-        return CreatedAtAction(
+        return result.ToCreatedAtActionResult(
             nameof(GetPositionById),
-            new { id = createdPosition.Id },
-            createdPosition);
+            new { id = result.IsSuccess ? result.Value.Id : Guid.Empty });
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<PositionDto>>> GetPositions(
+    public async Task<IActionResult> GetPositions(
         CancellationToken cancellationToken)
     {
-        var positions = await _positionsService.GetAllAsync(cancellationToken);
-        return Ok(positions);
+        var result = await _positionsService.GetAllAsync(cancellationToken);
+        return result.ToActionResult();
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<PositionDto>> GetPositionById(
+    public async Task<IActionResult> GetPositionById(
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var position = await _positionsService.GetByIdAsync(id, cancellationToken);
-
-        if (position is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(position);
+        var result = await _positionsService.GetByIdAsync(id, cancellationToken);
+        return result.ToActionResult();
     }
 
     [HttpPut("{id:guid}")]
@@ -58,14 +52,8 @@ public sealed class PositionsController : ControllerBase
         [FromBody] UpdatePositionDto positionDto,
         CancellationToken cancellationToken)
     {
-        var updated = await _positionsService.UpdateAsync(id, positionDto, cancellationToken);
-
-        if (!updated)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
+        var result = await _positionsService.UpdateAsync(id, positionDto, cancellationToken);
+        return result.ToNoContentActionResult();
     }
 
     [HttpDelete("{id:guid}")]
@@ -73,13 +61,7 @@ public sealed class PositionsController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var deleted = await _positionsService.DeleteAsync(id, cancellationToken);
-
-        if (!deleted)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
+        var result = await _positionsService.DeleteAsync(id, cancellationToken);
+        return result.ToNoContentActionResult();
     }
 }

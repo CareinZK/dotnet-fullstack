@@ -1,6 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
-using DirectoryService.Contracts;
 using DirectoryService.Application.Locations;
+using DirectoryService.Contracts;
+using DirectoryService.Domain.Common;
+using DirectoryService.Presentation.Common;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DirectoryService.Presentation;
 
@@ -23,55 +25,43 @@ public sealed class LocationsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Guid>> CreateLocationDto(
+    public async Task<IActionResult> CreateLocationDto(
         [FromBody] CreateLocationDto locationDto,
         CancellationToken cancellationToken)
     {
-        var locationId = await _createLocation.ExecuteAsync(locationDto, cancellationToken);
+        var result = await _createLocation.ExecuteAsync(locationDto, cancellationToken);
 
-        return CreatedAtAction(
+        return result.ToCreatedAtActionResult(
             nameof(GetLocationById),
-            new { id = locationId },
-            locationId);
+            new { id = result.IsSuccess ? result.Value : Guid.Empty });
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<LocationDto>>> GetLocations(
+    public async Task<IActionResult> GetLocations(
         CancellationToken cancellationToken)
     {
-        var locations = await _locationsService.GetAllAsync(cancellationToken);
-        return Ok(locations);
+        var result = await _locationsService.GetAllAsync(cancellationToken);
+        return result.ToActionResult();
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<LocationDto>> GetLocationById(
+    public async Task<IActionResult> GetLocationById(
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var location = await _locationsService.GetByIdAsync(id, cancellationToken);
-
-        if (location is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(location);
+        var result = await _locationsService.GetByIdAsync(id, cancellationToken);
+        return result.ToActionResult();
     }
 
     [HttpPatch("{id:guid}")]
+    [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateLocation(
         [FromRoute] Guid id,
         [FromBody] UpdateLocationDto locationDto,
         CancellationToken cancellationToken)
     {
-        var updated = await _locationsService.UpdateAsync(id, locationDto, cancellationToken);
-
-        if (!updated)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
+        var result = await _locationsService.UpdateAsync(id, locationDto, cancellationToken);
+        return result.ToNoContentActionResult();
     }
 
     [HttpDelete("{id:guid}")]
@@ -79,14 +69,8 @@ public sealed class LocationsController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var deleted = await _locationsService.DeleteAsync(id, cancellationToken);
-
-        if (!deleted)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
+        var result = await _locationsService.DeleteAsync(id, cancellationToken);
+        return result.ToNoContentActionResult();
     }
 
     [HttpPatch("{id:guid}/name")]
@@ -97,17 +81,11 @@ public sealed class LocationsController : ControllerBase
     {
         if (request.Id != id)
         {
-            return BadRequest("The route id and request id do not match.");
+            ErrorList error = Errors.General.ValueIsInvalid(nameof(request.Id), "The route id and request id do not match.");
+            return error.ToActionResult();
         }
 
         var result = await _updateLocationNameHandler.Handle(request, cancellationToken);
-
-        if (result.IsFailure)
-        {
-            return BadRequest(result.Error);
-        }
-
-        return Ok(result.Value);
+        return result.ToActionResult();
     }
-
 }
