@@ -6,4 +6,7 @@
     <Project Path="src/DirectoryService.Infrastructure.Postgres/DirectoryService.Infrastructure.Postgres.csproj" />
     <Project Path="src/DirectoryService.Presentation/DirectoryService.Presentation.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DirectoryService.Tests/DirectoryService.Tests.csproj" />
+  </Folder>
 </Solution>
