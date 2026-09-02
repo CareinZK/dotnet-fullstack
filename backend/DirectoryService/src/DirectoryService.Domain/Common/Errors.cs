@@ -27,6 +27,9 @@ public static class Errors
 
         public static Error Failure(string? message = null) =>
             Error.Failure("internal.server.error", message ?? "An unexpected error occurred.");
+
+        public static Error Database(string? message = null) =>
+            Error.Failure("database.error", message ?? "A database error occurred.");
     }
 
     public static class Location

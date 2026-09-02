@@ -29,7 +29,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check if department name {Name} exists.", name);
-            return Error.Failure("database.error", "A database error occurred while checking if department name exists.");
+            return Errors.General.Database("A database error occurred while checking if department name exists.");
         }
     }
 
@@ -66,7 +66,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         {
             _logger.LogError(ex, "Failed to save department {DepartmentId} with name {Name}", department.Id, department.Name);
             await transaction.RollbackAsync(cancellationToken);
-            return Error.Failure("database.error", "A database error occurred while saving department.");
+            return Errors.General.Database("A database error occurred while saving department.");
         }
     }
 
@@ -90,7 +90,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update department {DepartmentId}", department.Id);
-            return Error.Failure("database.error", "A database error occurred while updating department.");
+            return Errors.General.Database("A database error occurred while updating department.");
         }
     }
 
@@ -112,7 +112,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to delete department {DepartmentId}", id);
-            return Error.Failure("database.error", "A database error occurred while deleting department.");
+            return Errors.General.Database("A database error occurred while deleting department.");
         }
     }
 
@@ -129,7 +129,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch all departments.");
-            return Error.Failure("database.error", "A database error occurred while fetching departments.");
+            return Errors.General.Database("A database error occurred while fetching departments.");
         }
     }
 
@@ -151,7 +151,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch department by id {DepartmentId}", id);
-            return Error.Failure("database.error", "A database error occurred while fetching department.");
+            return Errors.General.Database("A database error occurred while fetching department.");
         }
     }
 
@@ -175,7 +175,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update department name for {DepartmentId}", id);
-            return Error.Failure("database.error", "A database error occurred while updating department name.");
+            return Errors.General.Database("A database error occurred while updating department name.");
         }
     }
 
@@ -190,7 +190,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check if location link exists for Department {DepartmentId} and Location {LocationId}", departmentId, locationId);
-            return Error.Failure("database.error", "A database error occurred while checking department location link.");
+            return Errors.General.Database("A database error occurred while checking department location link.");
         }
     }
 
@@ -211,7 +211,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to add location link for Department {DepartmentId} and Location {LocationId}", departmentId, locationId);
-            return Error.Failure("database.error", "A database error occurred while adding department location link.");
+            return Errors.General.Database("A database error occurred while adding department location link.");
         }
     }
 
@@ -233,7 +233,7 @@ public sealed class EfCoreDepartmentRepository : IDepartmentRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to remove location link for Department {DepartmentId} and Location {LocationId}", departmentId, locationId);
-            return Error.Failure("database.error", "A database error occurred while removing department location link.");
+            return Errors.General.Database("A database error occurred while removing department location link.");
         }
     }
 }

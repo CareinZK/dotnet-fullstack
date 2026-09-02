@@ -2,12 +2,14 @@ using DirectoryService.Application.Locations;
 using DirectoryService.Contracts;
 using DirectoryService.Domain.Common;
 using DirectoryService.Presentation.Common;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DirectoryService.Presentation;
 
 [ApiController]
 [Route("locations")]
+[ProducesResponseType(typeof(Envelope), StatusCodes.Status500InternalServerError)]
 public sealed class LocationsController : ControllerBase
 {
     private readonly ILocationsService _locationsService;
@@ -25,56 +27,67 @@ public sealed class LocationsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateLocationDto(
+    [ProducesResponseType(typeof(Envelope<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status409Conflict)]
+    public async Task<IResult> CreateLocationDto(
         [FromBody] CreateLocationDto locationDto,
         CancellationToken cancellationToken)
     {
         var result = await _createLocation.ExecuteAsync(locationDto, cancellationToken);
-
-        return result.ToCreatedAtActionResult(
-            nameof(GetLocationById),
-            new { id = result.IsSuccess ? result.Value : Guid.Empty });
+        return result.ToCreatedEnvelopeResult();
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetLocations(
+    [ProducesResponseType(typeof(Envelope<IReadOnlyList<LocationDto>>), StatusCodes.Status200OK)]
+    public async Task<IResult> GetLocations(
         CancellationToken cancellationToken)
     {
         var result = await _locationsService.GetAllAsync(cancellationToken);
-        return result.ToActionResult();
+        return result.ToEnvelopeResult();
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetLocationById(
+    [ProducesResponseType(typeof(Envelope<LocationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IResult> GetLocationById(
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
         var result = await _locationsService.GetByIdAsync(id, cancellationToken);
-        return result.ToActionResult();
+        return result.ToEnvelopeResult();
     }
 
     [HttpPatch("{id:guid}")]
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateLocation(
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IResult> UpdateLocation(
         [FromRoute] Guid id,
         [FromBody] UpdateLocationDto locationDto,
         CancellationToken cancellationToken)
     {
         var result = await _locationsService.UpdateAsync(id, locationDto, cancellationToken);
-        return result.ToNoContentActionResult();
+        return result.ToEnvelopeResult();
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> DeleteLocation(
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IResult> DeleteLocation(
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
         var result = await _locationsService.DeleteAsync(id, cancellationToken);
-        return result.ToNoContentActionResult();
+        return result.ToEnvelopeResult();
     }
 
     [HttpPatch("{id:guid}/name")]
-    public async Task<IActionResult> UpdateLocationName(
+    [ProducesResponseType(typeof(Envelope<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IResult> UpdateLocationName(
         [FromRoute] Guid id,
         [FromBody] UpdateLocationNameRequest request,
         CancellationToken cancellationToken)
@@ -82,10 +95,10 @@ public sealed class LocationsController : ControllerBase
         if (request.Id != id)
         {
             ErrorList error = Errors.General.ValueIsInvalid(nameof(request.Id), "The route id and request id do not match.");
-            return error.ToActionResult();
+            return error.ToEnvelopeResult();
         }
 
         var result = await _updateLocationNameHandler.Handle(request, cancellationToken);
-        return result.ToActionResult();
+        return result.ToEnvelopeResult();
     }
 }

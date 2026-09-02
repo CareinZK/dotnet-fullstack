@@ -1,5 +1,8 @@
+using DirectoryService.Domain.Common;
+using DirectoryService.Presentation.Common;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace DirectoryService.Presentation;
 
@@ -23,14 +26,9 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-        var problemDetails = new ProblemDetails
-        {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "Internal Server Error",
-            Detail = "An unexpected error occurred."
-        };
+        var envelope = Envelope.Error(Errors.General.Failure());
 
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        await httpContext.Response.WriteAsJsonAsync(envelope, cancellationToken);
         return true;
     }
 }

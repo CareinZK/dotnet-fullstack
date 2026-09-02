@@ -29,7 +29,7 @@ public sealed class EfCoreLocationRepository : ILocationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check if location name {Name} exists.", name);
-            return Error.Failure("database.error", "A database error occurred while checking if location name exists.");
+            return Errors.General.Database("A database error occurred while checking if location name exists.");
         }
     }
 
@@ -44,7 +44,7 @@ public sealed class EfCoreLocationRepository : ILocationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save location {LocationId} with name {Name}", location.Id, location.Name);
-            return Error.Failure("database.error", "A database error occurred while saving location.");
+            return Errors.General.Database("A database error occurred while saving location.");
         }
     }
 
@@ -60,7 +60,7 @@ public sealed class EfCoreLocationRepository : ILocationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch all locations.");
-            return Error.Failure("database.error", "A database error occurred while fetching locations.");
+            return Errors.General.Database("A database error occurred while fetching locations.");
         }
     }
 
@@ -82,7 +82,7 @@ public sealed class EfCoreLocationRepository : ILocationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch location by id {LocationId}", id);
-            return Error.Failure("database.error", "A database error occurred while fetching location.");
+            return Errors.General.Database("A database error occurred while fetching location.");
         }
     }
 
@@ -107,7 +107,7 @@ public sealed class EfCoreLocationRepository : ILocationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update location {LocationId}", location.Id);
-            return Error.Failure("database.error", "A database error occurred while updating location.");
+            return Errors.General.Database("A database error occurred while updating location.");
         }
     }
 
@@ -129,7 +129,7 @@ public sealed class EfCoreLocationRepository : ILocationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to delete location {LocationId}", id);
-            return Error.Failure("database.error", "A database error occurred while deleting location.");
+            return Errors.General.Database("A database error occurred while deleting location.");
         }
     }
 
@@ -153,7 +153,7 @@ public sealed class EfCoreLocationRepository : ILocationRepository
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update location name for {LocationId}", id);
-            return Error.Failure("database.error", "A database error occurred while updating location name.");
+            return Errors.General.Database("A database error occurred while updating location name.");
         }
     }
 }

@@ -44,9 +44,8 @@ public class Location
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
-    public string Name { get; private set; } = string.Empty;
-    public string Address { get; private set; } = string.Empty;
-
+    public string Name { get; private set; } 
+    public string Address { get; private set; }
     public UnitResult<Error> ChangeName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
