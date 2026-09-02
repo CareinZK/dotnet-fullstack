@@ -1,3 +1,5 @@
+#pragma warning disable S1133 // Deprecated code should be removed
+
 using CSharpFunctionalExtensions;
 using DirectoryService.Contracts;
 using DirectoryService.Domain.Common;

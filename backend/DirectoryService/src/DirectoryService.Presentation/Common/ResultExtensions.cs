@@ -1,44 +1,85 @@
 using CSharpFunctionalExtensions;
 using DirectoryService.Domain.Common;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 
 namespace DirectoryService.Presentation.Common;
 
 public static class ResultExtensions
 {
-    public static IActionResult ToActionResult<T>(this Result<T, ErrorList> result)
-    {
-        return result.IsSuccess
-            ? new OkObjectResult(result.Value)
-            : result.Error.ToActionResult();
-    }
-    
-    public static IActionResult ToCreatedAtActionResult<T>(
+    public static EnvelopeResult<T> ToEnvelopeResult<T>(
         this Result<T, ErrorList> result,
-        string actionName,
-        object routeValues)
+        int successStatusCode = StatusCodes.Status200OK)
     {
-        return result.IsSuccess
-            ? new CreatedAtActionResult(actionName, null, routeValues, result.Value)
-            : result.Error.ToActionResult();
+        if (result.IsSuccess)
+        {
+            return new EnvelopeResult<T>(Envelope<T>.Ok(result.Value), successStatusCode);
+        }
+
+        var statusCode = GetStatusCode(result.Error);
+        return new EnvelopeResult<T>(Envelope<T>.Error(result.Error), statusCode);
     }
 
-    public static IActionResult ToNoContentActionResult(this UnitResult<ErrorList> result)
+    public static EnvelopeResult<T> ToEnvelopeResult<T>(
+        this Result<T, Error> result,
+        int successStatusCode = StatusCodes.Status200OK)
     {
-        return result.IsSuccess
-            ? new NoContentResult()
-            : result.Error.ToActionResult();
+        return result.ToErrorList().ToEnvelopeResult(successStatusCode);
     }
 
-    public static IActionResult ToActionResult(this ErrorList errors)
+    public static EnvelopeResult ToEnvelopeResult(
+        this UnitResult<ErrorList> result,
+        int successStatusCode = StatusCodes.Status200OK)
+    {
+        if (result.IsSuccess)
+        {
+            return new EnvelopeResult(Envelope.Ok(), successStatusCode);
+        }
+
+        var statusCode = GetStatusCode(result.Error);
+        return new EnvelopeResult(Envelope.Error(result.Error), statusCode);
+    }
+
+    public static EnvelopeResult ToEnvelopeResult(
+        this UnitResult<Error> result,
+        int successStatusCode = StatusCodes.Status200OK)
+    {
+        return result.ToErrorList().ToEnvelopeResult(successStatusCode);
+    }
+
+    public static EnvelopeResult ToEnvelopeResult(this ErrorList errors)
+    {
+        var statusCode = GetStatusCode(errors);
+        return new EnvelopeResult(Envelope.Error(errors), statusCode);
+    }
+
+    public static EnvelopeResult ToEnvelopeResult(this Error error)
+    {
+        var errors = error.ToErrorList();
+        var statusCode = GetStatusCode(errors);
+        return new EnvelopeResult(Envelope.Error(errors), statusCode);
+    }
+
+    public static EnvelopeResult<T> ToCreatedEnvelopeResult<T>(
+        this Result<T, ErrorList> result)
+    {
+        return result.ToEnvelopeResult(StatusCodes.Status201Created);
+    }
+
+    public static EnvelopeResult<T> ToCreatedEnvelopeResult<T>(
+        this Result<T, Error> result)
+    {
+        return result.ToEnvelopeResult(StatusCodes.Status201Created);
+    }
+
+    public static int GetStatusCode(ErrorList errors)
     {
         if (errors.Count == 0)
         {
-            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            return StatusCodes.Status500InternalServerError;
         }
 
         var primaryError = errors[0];
-        var statusCode = primaryError.Type switch
+        return primaryError.Type switch
         {
             ErrorType.Validation => StatusCodes.Status400BadRequest,
             ErrorType.NotFound => StatusCodes.Status404NotFound,
@@ -47,15 +88,6 @@ public static class ResultExtensions
             ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
             ErrorType.Failure => StatusCodes.Status500InternalServerError,
             _ => StatusCodes.Status500InternalServerError
-        };
-
-        object responseBody = (errors.Count > 1 || primaryError.Type == ErrorType.Validation)
-            ? (object)errors
-            : (object)primaryError;
-
-        return new ObjectResult(responseBody)
-        {
-            StatusCode = statusCode
         };
     }
 }
