@@ -1,6 +1,5 @@
 using DirectoryService.Contracts;
 using DirectoryService.Presentation.Common;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DirectoryService.Presentation;

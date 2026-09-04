@@ -1,11 +1,11 @@
 using System.Data;
+using DirectoryService.Application;
 using DirectoryService.Application.Departments;
 using DirectoryService.Application.Locations;
 using DirectoryService.Contracts;
 using DirectoryService.Infrastructure.Postgres;
 using DirectoryService.Infrastructure.Postgres.Repositories;
 using DirectoryService.Presentation;
-using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Scalar.AspNetCore;
@@ -38,13 +38,7 @@ else
     builder.Services.AddScoped<IDepartmentRepository, EfCoreDepartmentRepository>();
 }
 
-builder.Services.AddValidatorsFromAssemblyContaining<CreateLocationDtoValidator>();
-builder.Services.AddScoped<CreateLocation>();
-builder.Services.AddScoped<UpdateLocationNameHandler>();
-builder.Services.AddScoped<CreateDepartment>();
-builder.Services.AddScoped<UpdateDepartmentNameHandler>();
-builder.Services.AddScoped<ILocationsService, LocationsService>();
-builder.Services.AddScoped<IDepartmentsService, DepartmentsService>();
+builder.Services.AddApplication();
 builder.Services.AddScoped<IPositionsService, StubPositionsService>();
 
 builder.Services.AddProblemDetails();

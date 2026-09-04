@@ -1,5 +1,7 @@
 namespace DirectoryService.Domain.Common;
 
+// ReSharper disable UnusedMember.Global
+// ReSharper disable UnusedType.Global
 public static class Errors
 {
     public static class General

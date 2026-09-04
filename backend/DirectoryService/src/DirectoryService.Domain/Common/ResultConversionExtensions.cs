@@ -12,5 +12,5 @@ public static class ResultConversionExtensions
     public static UnitResult<ErrorList> ToErrorList(this UnitResult<Error> result) =>
         result.IsSuccess
             ? UnitResult.Success<ErrorList>()
-            : UnitResult.Failure<ErrorList>(new ErrorList(result.Error));
+            : UnitResult.Failure(new ErrorList(result.Error));
 }

@@ -27,9 +27,11 @@ public sealed record Error
     public static Error Conflict(string code, string message) =>
         new(code, message, ErrorType.Conflict);
 
+    // ReSharper disable once UnusedMember.Global
     public static Error Forbidden(string code, string message) =>
         new(code, message, ErrorType.Forbidden);
 
+    // ReSharper disable once UnusedMember.Global
     public static Error Unauthorized(string code, string message) =>
         new(code, message, ErrorType.Unauthorized);
 

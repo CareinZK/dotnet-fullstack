@@ -5,6 +5,7 @@ namespace DirectoryService.Domain;
 
 public class Position
 {
+    // ReSharper disable once UnusedMember.Local
     private Position()
     {
         Name = string.Empty;
@@ -35,11 +36,14 @@ public class Position
         return new Position(id, name.Trim());
     }
 
+    // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
+    // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
     public Guid Id { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
     public string Name { get; private set; }
 
+    // ReSharper disable once UnusedMember.Global
     public UnitResult<Error> ChangeName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))

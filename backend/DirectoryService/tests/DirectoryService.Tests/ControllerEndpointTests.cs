@@ -108,19 +108,59 @@ public sealed class ControllerEndpointTests
             var removed = Links.Remove((departmentId, locationId));
             return Task.FromResult(removed
                 ? UnitResult.Success<Error>()
-                : UnitResult.Failure<Error>(Errors.Department.LocationNotLinked(departmentId, locationId)));
+                : UnitResult.Failure(Errors.Department.LocationNotLinked(departmentId, locationId)));
         }
+    }
+
+    private static LocationsController CreateLocationsController(ILocationRepository locRepo)
+    {
+        var createLocationHandler = new CreateLocationHandler(locRepo, new CreateLocationCommandValidator());
+        var getLocationsHandler = new GetLocationsHandler(locRepo);
+        var getLocationByIdHandler = new GetLocationByIdHandler(locRepo);
+        var updateLocationHandler = new UpdateLocationHandler(locRepo, new UpdateLocationCommandValidator());
+        var deleteLocationHandler = new DeleteLocationHandler(locRepo);
+        var updateLocationNameHandler = new UpdateLocationNameHandler(locRepo, new UpdateLocationNameCommandValidator());
+
+        return new LocationsController(
+            createLocationHandler,
+            getLocationsHandler,
+            getLocationByIdHandler,
+            updateLocationHandler,
+            deleteLocationHandler,
+            updateLocationNameHandler);
+    }
+
+    private static DepartmentsController CreateDepartmentsController(IDepartmentRepository deptRepo, ILocationRepository locRepo)
+    {
+        var createDepartmentHandler = new CreateDepartmentHandler(deptRepo, locRepo, new CreateDepartmentCommandValidator());
+        var getDepartmentsHandler = new GetDepartmentsHandler(deptRepo);
+        var getDepartmentByIdHandler = new GetDepartmentByIdHandler(deptRepo);
+        var updateDepartmentHandler = new UpdateDepartmentHandler(deptRepo, new UpdateDepartmentCommandValidator());
+        var deleteDepartmentHandler = new DeleteDepartmentHandler(deptRepo);
+        var updateDepartmentNameHandler = new UpdateDepartmentNameHandler(deptRepo, new UpdateDepartmentNameCommandValidator());
+
+        return new DepartmentsController(
+            createDepartmentHandler,
+            getDepartmentsHandler,
+            getDepartmentByIdHandler,
+            updateDepartmentHandler,
+            deleteDepartmentHandler,
+            updateDepartmentNameHandler);
+    }
+
+    private static DepartmentLocationsController CreateDepartmentLocationsController(IDepartmentRepository deptRepo, ILocationRepository locRepo)
+    {
+        var linkHandler = new LinkDepartmentLocationHandler(deptRepo, locRepo);
+        var unlinkHandler = new UnlinkDepartmentLocationHandler(deptRepo, locRepo);
+
+        return new DepartmentLocationsController(linkHandler, unlinkHandler);
     }
 
     [Fact]
     public async Task PostLocations_WithValidData_Returns201AndEnvelopeWithCreatedId()
     {
         var locRepo = new FakeLocationRepository();
-        var createLocation = new CreateLocation(locRepo, new CreateLocationDtoValidator());
-        var updateLocationNameHandler = new UpdateLocationNameHandler(locRepo, new UpdateLocationNameRequestValidator());
-        var locationsService = new LocationsService(locRepo, createLocation, new UpdateLocationDtoValidator());
-
-        var controller = new LocationsController(locationsService, createLocation, updateLocationNameHandler);
+        var controller = CreateLocationsController(locRepo);
 
         var result = await controller.CreateLocationDto(new CreateLocationDto("Headquarters", "123 Main St"), CancellationToken.None);
 
@@ -134,11 +174,7 @@ public sealed class ControllerEndpointTests
     public async Task PostLocations_WithEmptyNameAndInvalidAddress_Returns400AndEnvelopeWithValidationErrors()
     {
         var locRepo = new FakeLocationRepository();
-        var createLocation = new CreateLocation(locRepo, new CreateLocationDtoValidator());
-        var updateLocationNameHandler = new UpdateLocationNameHandler(locRepo, new UpdateLocationNameRequestValidator());
-        var locationsService = new LocationsService(locRepo, createLocation, new UpdateLocationDtoValidator());
-
-        var controller = new LocationsController(locationsService, createLocation, updateLocationNameHandler);
+        var controller = CreateLocationsController(locRepo);
 
         var result = await controller.CreateLocationDto(new CreateLocationDto(string.Empty, string.Empty), CancellationToken.None);
 
@@ -155,10 +191,7 @@ public sealed class ControllerEndpointTests
     {
         var deptRepo = new FakeDepartmentRepository();
         var locRepo = new FakeLocationRepository();
-        var deptService = new DepartmentsService(deptRepo, locRepo, new CreateDepartmentDtoValidator(), new UpdateDepartmentDtoValidator());
-        var updateDeptNameHandler = new UpdateDepartmentNameHandler(deptRepo, new UpdateDepartmentNameRequestValidator());
-
-        var controller = new DepartmentsController(deptService, updateDeptNameHandler);
+        var controller = CreateDepartmentsController(deptRepo, locRepo);
         var missingId = Guid.NewGuid();
 
         var result = await controller.GetDepartmentById(missingId, CancellationToken.None);
@@ -183,8 +216,7 @@ public sealed class ControllerEndpointTests
         locRepo.Locations.Add(loc);
         deptRepo.Links.Add((dept.Id, loc.Id));
 
-        var deptService = new DepartmentsService(deptRepo, locRepo, new CreateDepartmentDtoValidator(), new UpdateDepartmentDtoValidator());
-        var controller = new DepartmentLocationsController(deptService);
+        var controller = CreateDepartmentLocationsController(deptRepo, locRepo);
 
         var result = await controller.LinkLocation(dept.Id, loc.Id, CancellationToken.None);
 

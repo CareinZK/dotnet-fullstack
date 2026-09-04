@@ -22,12 +22,12 @@ public class DapperLocationRepository : ILocationRepository
     public async Task<Result<bool, Error>> NameExistsAsync(string name, CancellationToken cancellationToken)
     {
         const string sql = """
-        SELECT EXISTS(
-            SELECT 1
-            FROM locations
-            WHERE lower(name) = lower(@Name)
-        )
-        """;
+                           SELECT EXISTS(
+                               SELECT 1
+                               FROM locations
+                               WHERE lower(name) = lower(@Name)
+                           )
+                           """;
 
         try
         {
@@ -45,19 +45,19 @@ public class DapperLocationRepository : ILocationRepository
     public async Task<UnitResult<Error>> AddAsync(Location location, CancellationToken cancellationToken)
     {
         const string sql = """
-        INSERT INTO locations (id, name, address, created_at, updated_at)
-        VALUES (@Id, @Name, @Address, @CreatedAt, @UpdatedAt)
-        """;
+                           INSERT INTO locations (id, name, address, created_at, updated_at)
+                           VALUES (@Id, @Name, @Address, @CreatedAt, @UpdatedAt)
+                           """;
 
         try
         {
             await _connection.ExecuteAsync(new CommandDefinition(sql, new
             {
-                Id = location.Id,
-                Name = location.Name,
-                Address = location.Address,
-                CreatedAt = location.CreatedAt,
-                UpdatedAt = location.UpdatedAt
+                location.Id,
+                location.Name,
+                location.Address,
+                location.CreatedAt,
+                location.UpdatedAt
             }, cancellationToken: cancellationToken));
 
             return UnitResult.Success<Error>();
@@ -72,9 +72,9 @@ public class DapperLocationRepository : ILocationRepository
     public async Task<Result<IReadOnlyList<Location>, Error>> GetAllAsync(CancellationToken cancellationToken)
     {
         const string sql = """
-        SELECT id, name, address, created_at AS CreatedAt, updated_at AS UpdatedAt
-        FROM locations
-        """;
+                           SELECT id, name, address, created_at AS CreatedAt, updated_at AS UpdatedAt
+                           FROM locations
+                           """;
 
         try
         {
@@ -92,10 +92,10 @@ public class DapperLocationRepository : ILocationRepository
     public async Task<Result<Location, Error>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         const string sql = """
-        SELECT id, name, address, created_at AS CreatedAt, updated_at AS UpdatedAt
-        FROM locations
-        WHERE id = @Id
-        """;
+                           SELECT id, name, address, created_at AS CreatedAt, updated_at AS UpdatedAt
+                           FROM locations
+                           WHERE id = @Id
+                           """;
 
         try
         {
@@ -119,10 +119,10 @@ public class DapperLocationRepository : ILocationRepository
     public async Task<UnitResult<Error>> UpdateAsync(Location location, CancellationToken cancellationToken)
     {
         const string updateSql = """
-        UPDATE locations
-        SET name = @Name, address = @Address, updated_at = @UpdatedAt
-        WHERE id = @Id
-        """;
+                                 UPDATE locations
+                                 SET name = @Name, address = @Address, updated_at = @UpdatedAt
+                                 WHERE id = @Id
+                                 """;
 
         try
         {
@@ -149,9 +149,9 @@ public class DapperLocationRepository : ILocationRepository
     public async Task<UnitResult<Error>> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         const string deleteSql = """
-        DELETE FROM locations
-        WHERE id = @Id
-        """;
+                                 DELETE FROM locations
+                                 WHERE id = @Id
+                                 """;
 
         try
         {
@@ -175,13 +175,14 @@ public class DapperLocationRepository : ILocationRepository
         }
     }
 
-    public async Task<UnitResult<Error>> UpdateLocationNameAsync(Guid id, string name, CancellationToken cancellationToken)
+    public async Task<UnitResult<Error>> UpdateLocationNameAsync(Guid id, string name,
+        CancellationToken cancellationToken)
     {
         const string updateNameSql = """
-        UPDATE locations
-        SET name = @Name, updated_at = NOW()
-        WHERE id = @Id
-        """;
+                                     UPDATE locations
+                                     SET name = @Name, updated_at = NOW()
+                                     WHERE id = @Id
+                                     """;
 
         try
         {

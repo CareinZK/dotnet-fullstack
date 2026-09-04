@@ -12,6 +12,7 @@ public class Department
         RegexOptions.CultureInvariant,
         TimeSpan.FromSeconds(1));
 
+    // ReSharper disable once UnusedMember.Local
     private Department()
     {
         Name = string.Empty;
@@ -52,6 +53,8 @@ public class Department
         return new Department(id, name.Trim(), slug.Trim(), parentDepartment);
     }
 
+    // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
+    // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
     public Guid Id { get; private set; }
 
     public Guid? ParentId { get; private set; }

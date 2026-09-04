@@ -5,6 +5,7 @@ namespace DirectoryService.Domain.Departments;
 
 public class DepartmentPositions
 {
+    // ReSharper disable once UnusedMember.Local
     private DepartmentPositions()
     {
         PositionIds = [];
