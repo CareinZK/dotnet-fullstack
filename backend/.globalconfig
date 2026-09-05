@@ -45,3 +45,13 @@ dotnet_diagnostic.S1144.severity = none
 dotnet_diagnostic.S1125.severity = error  # Redundant Boolean literal
 dotnet_diagnostic.S6673.severity = error  # Serilog template placeholder order
 dotnet_diagnostic.S108.severity  = error  # Пустой catch-блок без комментария
+
+# Primary constructor: отключить предложение конвертировать обычный конструктор в primary constructor
+resharper_convert_to_primary_constructor_highlighting = none
+dotnet_diagnostic.IDE0290.severity = none
+
+# Collection expression: отключить предложение использовать коллекционные выражения C# 12 ([])
+resharper_use_collection_expression_highlighting = none
+dotnet_diagnostic.IDE0300.severity = none
+dotnet_diagnostic.IDE0301.severity = none
+dotnet_diagnostic.IDE0305.severity = none

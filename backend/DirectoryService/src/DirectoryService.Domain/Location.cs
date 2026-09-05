@@ -5,6 +5,7 @@ namespace DirectoryService.Domain;
 
 public class Location
 {
+    // ReSharper disable once UnusedMember.Local
     private Location()
     {
         Name = string.Empty;
@@ -40,12 +41,16 @@ public class Location
         return new Location(id, name.Trim(), address.Trim());
     }
 
+    // ReSharper disable AutoPropertyCanBeMadeGetOnly.Local
+    // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
     public Guid Id { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
     public string Name { get; private set; } 
     public string Address { get; private set; }
+
+    // ReSharper disable once UnusedMember.Global
     public UnitResult<Error> ChangeName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -58,6 +63,7 @@ public class Location
         return UnitResult.Success<Error>();
     }
 
+    // ReSharper disable once UnusedMember.Global
     public UnitResult<Error> ChangeAddress(string address)
     {
         if (string.IsNullOrWhiteSpace(address))

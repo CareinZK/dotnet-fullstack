@@ -1,8 +1,8 @@
+using DirectoryService.Application.Common;
 using DirectoryService.Application.Locations;
 using DirectoryService.Contracts;
 using DirectoryService.Domain.Common;
 using DirectoryService.Presentation.Common;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DirectoryService.Presentation;
@@ -10,19 +10,29 @@ namespace DirectoryService.Presentation;
 [ApiController]
 [Route("locations")]
 [ProducesResponseType(typeof(Envelope), StatusCodes.Status500InternalServerError)]
+#pragma warning disable S6960 // Controllers should not have multiple responsibilities
 public sealed class LocationsController : ControllerBase
 {
-    private readonly ILocationsService _locationsService;
-    private readonly CreateLocation _createLocation;
-    private readonly UpdateLocationNameHandler _updateLocationNameHandler;
+    private readonly ICommandHandler<CreateLocationCommand, Guid> _createLocationHandler;
+    private readonly IQueryHandler<GetLocationsQuery, IReadOnlyList<LocationDto>> _getLocationsHandler;
+    private readonly IQueryHandler<GetLocationByIdQuery, LocationDto> _getLocationByIdHandler;
+    private readonly ICommandHandler<UpdateLocationCommand> _updateLocationHandler;
+    private readonly ICommandHandler<DeleteLocationCommand> _deleteLocationHandler;
+    private readonly ICommandHandler<UpdateLocationNameCommand, Guid> _updateLocationNameHandler;
 
     public LocationsController(
-        ILocationsService locationsService,
-        CreateLocation createLocation,
-        UpdateLocationNameHandler updateLocationNameHandler)
+        ICommandHandler<CreateLocationCommand, Guid> createLocationHandler,
+        IQueryHandler<GetLocationsQuery, IReadOnlyList<LocationDto>> getLocationsHandler,
+        IQueryHandler<GetLocationByIdQuery, LocationDto> getLocationByIdHandler,
+        ICommandHandler<UpdateLocationCommand> updateLocationHandler,
+        ICommandHandler<DeleteLocationCommand> deleteLocationHandler,
+        ICommandHandler<UpdateLocationNameCommand, Guid> updateLocationNameHandler)
     {
-        _locationsService = locationsService;
-        _createLocation = createLocation;
+        _createLocationHandler = createLocationHandler;
+        _getLocationsHandler = getLocationsHandler;
+        _getLocationByIdHandler = getLocationByIdHandler;
+        _updateLocationHandler = updateLocationHandler;
+        _deleteLocationHandler = deleteLocationHandler;
         _updateLocationNameHandler = updateLocationNameHandler;
     }
 
@@ -34,7 +44,8 @@ public sealed class LocationsController : ControllerBase
         [FromBody] CreateLocationDto locationDto,
         CancellationToken cancellationToken)
     {
-        var result = await _createLocation.ExecuteAsync(locationDto, cancellationToken);
+        var command = new CreateLocationCommand(locationDto.Name, locationDto.Address);
+        var result = await _createLocationHandler.Handle(command, cancellationToken);
         return result.ToCreatedEnvelopeResult();
     }
 
@@ -43,7 +54,8 @@ public sealed class LocationsController : ControllerBase
     public async Task<IResult> GetLocations(
         CancellationToken cancellationToken)
     {
-        var result = await _locationsService.GetAllAsync(cancellationToken);
+        var query = new GetLocationsQuery();
+        var result = await _getLocationsHandler.Handle(query, cancellationToken);
         return result.ToEnvelopeResult();
     }
 
@@ -54,7 +66,8 @@ public sealed class LocationsController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var result = await _locationsService.GetByIdAsync(id, cancellationToken);
+        var query = new GetLocationByIdQuery(id);
+        var result = await _getLocationByIdHandler.Handle(query, cancellationToken);
         return result.ToEnvelopeResult();
     }
 
@@ -68,7 +81,8 @@ public sealed class LocationsController : ControllerBase
         [FromBody] UpdateLocationDto locationDto,
         CancellationToken cancellationToken)
     {
-        var result = await _locationsService.UpdateAsync(id, locationDto, cancellationToken);
+        var command = new UpdateLocationCommand(id, locationDto.Name, locationDto.Address);
+        var result = await _updateLocationHandler.Handle(command, cancellationToken);
         return result.ToEnvelopeResult();
     }
 
@@ -79,7 +93,8 @@ public sealed class LocationsController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var result = await _locationsService.DeleteAsync(id, cancellationToken);
+        var command = new DeleteLocationCommand(id);
+        var result = await _deleteLocationHandler.Handle(command, cancellationToken);
         return result.ToEnvelopeResult();
     }
 
@@ -98,7 +113,8 @@ public sealed class LocationsController : ControllerBase
             return error.ToEnvelopeResult();
         }
 
-        var result = await _updateLocationNameHandler.Handle(request, cancellationToken);
+        var command = new UpdateLocationNameCommand(request.Id, request.Name);
+        var result = await _updateLocationNameHandler.Handle(command, cancellationToken);
         return result.ToEnvelopeResult();
     }
 }

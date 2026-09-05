@@ -9,6 +9,8 @@ public sealed record CreateDepartmentLocationDto(Guid Id, Guid DepartmentId, Gui
 
 public sealed record UpdateDepartmentLocationDto(Guid Id, Guid DepartmentId, Guid LocationId, bool IsPrimaryLocation);
 
+// ReSharper disable UnusedMember.Global
+// ReSharper disable once UnusedType.Global
 public interface IDepartmentLocationsService
 {
     Task<Result<DepartmentLocationDto, ErrorList>> CreateAsync(CreateDepartmentLocationDto dto, CancellationToken cancellationToken);

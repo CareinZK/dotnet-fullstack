@@ -14,7 +14,7 @@ public sealed class HandlerTests
     private sealed class FakeLocationRepository : ILocationRepository
     {
         public List<Location> Locations { get; } = [];
-        public bool ShouldFailWithDbError { get; set; }
+        public bool ShouldFailWithDbError { get; init; }
 
         public Task<Result<bool, Error>> NameExistsAsync(string name, CancellationToken cancellationToken)
         {
@@ -30,7 +30,7 @@ public sealed class HandlerTests
         {
             if (ShouldFailWithDbError)
             {
-                return Task.FromResult(UnitResult.Failure<Error>(Error.Failure("database.error", "DB failure")));
+                return Task.FromResult(UnitResult.Failure(Error.Failure("database.error", "DB failure")));
             }
 
             Locations.Add(location);
@@ -116,7 +116,7 @@ public sealed class HandlerTests
             var removed = Links.Remove((departmentId, locationId));
             return Task.FromResult(removed
                 ? UnitResult.Success<Error>()
-                : UnitResult.Failure<Error>(Errors.Department.LocationNotLinked(departmentId, locationId)));
+                : UnitResult.Failure(Errors.Department.LocationNotLinked(departmentId, locationId)));
         }
     }
 
@@ -182,7 +182,7 @@ public sealed class HandlerTests
     }
 
     [Fact]
-    public async Task DepartmentsService_LinkLocation_WhenAlreadyLinked_ReturnsConflict()
+    public async Task LinkDepartmentLocationHandler_WhenAlreadyLinked_ReturnsConflict()
     {
         var deptRepo = new FakeDepartmentRepository();
         var locRepo = new FakeLocationRepository();
@@ -193,8 +193,8 @@ public sealed class HandlerTests
         locRepo.Locations.Add(loc);
         deptRepo.Links.Add((dept.Id, loc.Id));
 
-        var service = new DepartmentsService(deptRepo, locRepo, new CreateDepartmentDtoValidator(), new UpdateDepartmentDtoValidator());
-        var result = await service.LinkLocationAsync(dept.Id, loc.Id, CancellationToken.None);
+        var handler = new LinkDepartmentLocationHandler(deptRepo, locRepo);
+        var result = await handler.Handle(new LinkDepartmentLocationCommand(dept.Id, loc.Id), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.Conflict, result.Error[0].Type);
@@ -202,7 +202,7 @@ public sealed class HandlerTests
     }
 
     [Fact]
-    public async Task DepartmentsService_UnlinkLocation_WhenNotLinked_ReturnsNotFound()
+    public async Task UnlinkDepartmentLocationHandler_WhenNotLinked_ReturnsNotFound()
     {
         var deptRepo = new FakeDepartmentRepository();
         var locRepo = new FakeLocationRepository();
@@ -212,11 +212,151 @@ public sealed class HandlerTests
         deptRepo.Departments.Add(dept);
         locRepo.Locations.Add(loc);
 
-        var service = new DepartmentsService(deptRepo, locRepo, new CreateDepartmentDtoValidator(), new UpdateDepartmentDtoValidator());
-        var result = await service.UnlinkLocationAsync(dept.Id, loc.Id, CancellationToken.None);
+        var handler = new UnlinkDepartmentLocationHandler(deptRepo, locRepo);
+        var result = await handler.Handle(new UnlinkDepartmentLocationCommand(dept.Id, loc.Id), CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.NotFound, result.Error[0].Type);
         Assert.Equal("department.location.not.linked", result.Error[0].Code);
+    }
+
+    [Fact]
+    public async Task GetLocationsHandler_ReturnsAllLocations()
+    {
+        var repo = new FakeLocationRepository();
+        repo.Locations.Add(Location.Create(Guid.NewGuid(), "HQ", "Main St").Value);
+
+        var handler = new GetLocationsHandler(repo);
+        var result = await handler.Handle(new GetLocationsQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value);
+        Assert.Equal("HQ", result.Value[0].Name);
+    }
+
+    [Fact]
+    public async Task GetLocationByIdHandler_WhenExists_ReturnsLocation()
+    {
+        var repo = new FakeLocationRepository();
+        var loc = Location.Create(Guid.NewGuid(), "Branch", "Side St").Value;
+        repo.Locations.Add(loc);
+
+        var handler = new GetLocationByIdHandler(repo);
+        var result = await handler.Handle(new GetLocationByIdQuery(loc.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(loc.Id, result.Value.Id);
+        Assert.Equal("Branch", result.Value.Name);
+    }
+
+    [Fact]
+    public async Task UpdateLocationHandler_WithValidData_UpdatesSuccessfully()
+    {
+        var repo = new FakeLocationRepository();
+        var loc = Location.Create(Guid.NewGuid(), "Branch", "Old Address").Value;
+        repo.Locations.Add(loc);
+
+        var handler = new UpdateLocationHandler(repo, new UpdateLocationCommandValidator());
+        var result = await handler.Handle(new UpdateLocationCommand(loc.Id, "Updated Branch", "New Address"), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Updated Branch", loc.Name);
+    }
+
+    [Fact]
+    public async Task DeleteLocationHandler_DeletesSuccessfully()
+    {
+        var repo = new FakeLocationRepository();
+        var loc = Location.Create(Guid.NewGuid(), "Branch", "Address").Value;
+        repo.Locations.Add(loc);
+
+        var handler = new DeleteLocationHandler(repo);
+        var result = await handler.Handle(new DeleteLocationCommand(loc.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(repo.Locations);
+    }
+
+    [Fact]
+    public async Task UpdateLocationNameHandler_UpdatesNameSuccessfully()
+    {
+        var repo = new FakeLocationRepository();
+        var locId = Guid.NewGuid();
+
+        var handler = new UpdateLocationNameHandler(repo, new UpdateLocationNameCommandValidator());
+        var result = await handler.Handle(new UpdateLocationNameCommand(locId, "New Name"), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(locId, result.Value);
+    }
+
+    [Fact]
+    public async Task GetDepartmentsHandler_ReturnsAllDepartments()
+    {
+        var deptRepo = new FakeDepartmentRepository();
+        deptRepo.Departments.Add(Department.Create(Guid.NewGuid(), "Eng", "eng", null).Value);
+
+        var handler = new GetDepartmentsHandler(deptRepo);
+        var result = await handler.Handle(new GetDepartmentsQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value);
+        Assert.Equal("Eng", result.Value[0].Name);
+    }
+
+    [Fact]
+    public async Task GetDepartmentByIdHandler_WhenExists_ReturnsDepartment()
+    {
+        var deptRepo = new FakeDepartmentRepository();
+        var dept = Department.Create(Guid.NewGuid(), "Sales", "sales", null).Value;
+        deptRepo.Departments.Add(dept);
+
+        var handler = new GetDepartmentByIdHandler(deptRepo);
+        var result = await handler.Handle(new GetDepartmentByIdQuery(dept.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(dept.Id, result.Value.Id);
+        Assert.Equal("Sales", result.Value.Name);
+    }
+
+    [Fact]
+    public async Task UpdateDepartmentHandler_WithValidData_UpdatesSuccessfully()
+    {
+        var deptRepo = new FakeDepartmentRepository();
+        var dept = Department.Create(Guid.NewGuid(), "Old Name", "slug", null).Value;
+        deptRepo.Departments.Add(dept);
+
+        var handler = new UpdateDepartmentHandler(deptRepo, new UpdateDepartmentCommandValidator());
+        var result = await handler.Handle(new UpdateDepartmentCommand(dept.Id, "New Name"), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("New Name", dept.Name);
+    }
+
+    [Fact]
+    public async Task DeleteDepartmentHandler_DeletesSuccessfully()
+    {
+        var deptRepo = new FakeDepartmentRepository();
+        var dept = Department.Create(Guid.NewGuid(), "Dept", "dept", null).Value;
+        deptRepo.Departments.Add(dept);
+
+        var handler = new DeleteDepartmentHandler(deptRepo);
+        var result = await handler.Handle(new DeleteDepartmentCommand(dept.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(deptRepo.Departments);
+    }
+
+    [Fact]
+    public async Task UpdateDepartmentNameHandler_UpdatesNameSuccessfully()
+    {
+        var deptRepo = new FakeDepartmentRepository();
+        var deptId = Guid.NewGuid();
+
+        var handler = new UpdateDepartmentNameHandler(deptRepo, new UpdateDepartmentNameCommandValidator());
+        var result = await handler.Handle(new UpdateDepartmentNameCommand(deptId, "New Name"), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(deptId, result.Value);
     }
 }

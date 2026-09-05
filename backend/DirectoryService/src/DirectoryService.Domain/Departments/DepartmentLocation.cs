@@ -5,6 +5,7 @@ namespace DirectoryService.Domain.Departments;
 
 public class DepartmentLocation
 {
+    // ReSharper disable once UnusedMember.Local
     private DepartmentLocation()
     {
     }
@@ -42,6 +43,7 @@ public class DepartmentLocation
     public Guid LocationId { get; private set; }
     public bool IsPrimaryLocation { get; private set; }
 
+    // ReSharper disable once UnusedMember.Global
     public void UpdatePrimaryStatus(bool isPrimaryLocation)
     {
         IsPrimaryLocation = isPrimaryLocation;

@@ -1,8 +1,8 @@
+using DirectoryService.Application.Common;
 using DirectoryService.Application.Departments;
 using DirectoryService.Contracts;
 using DirectoryService.Domain.Common;
 using DirectoryService.Presentation.Common;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DirectoryService.Presentation;
@@ -10,16 +10,29 @@ namespace DirectoryService.Presentation;
 [ApiController]
 [Route("departments")]
 [ProducesResponseType(typeof(Envelope), StatusCodes.Status500InternalServerError)]
+#pragma warning disable S6960 // Controllers should not have multiple responsibilities
 public sealed class DepartmentsController : ControllerBase
 {
-    private readonly IDepartmentsService _departmentsService;
-    private readonly UpdateDepartmentNameHandler _updateDepartmentNameHandler;
+    private readonly ICommandHandler<CreateDepartmentCommand, DepartmentDto> _createDepartmentHandler;
+    private readonly IQueryHandler<GetDepartmentsQuery, IReadOnlyList<DepartmentDto>> _getDepartmentsHandler;
+    private readonly IQueryHandler<GetDepartmentByIdQuery, DepartmentDto> _getDepartmentByIdHandler;
+    private readonly ICommandHandler<UpdateDepartmentCommand> _updateDepartmentHandler;
+    private readonly ICommandHandler<DeleteDepartmentCommand> _deleteDepartmentHandler;
+    private readonly ICommandHandler<UpdateDepartmentNameCommand, Guid> _updateDepartmentNameHandler;
 
     public DepartmentsController(
-        IDepartmentsService departmentsService,
-        UpdateDepartmentNameHandler updateDepartmentNameHandler)
+        ICommandHandler<CreateDepartmentCommand, DepartmentDto> createDepartmentHandler,
+        IQueryHandler<GetDepartmentsQuery, IReadOnlyList<DepartmentDto>> getDepartmentsHandler,
+        IQueryHandler<GetDepartmentByIdQuery, DepartmentDto> getDepartmentByIdHandler,
+        ICommandHandler<UpdateDepartmentCommand> updateDepartmentHandler,
+        ICommandHandler<DeleteDepartmentCommand> deleteDepartmentHandler,
+        ICommandHandler<UpdateDepartmentNameCommand, Guid> updateDepartmentNameHandler)
     {
-        _departmentsService = departmentsService;
+        _createDepartmentHandler = createDepartmentHandler;
+        _getDepartmentsHandler = getDepartmentsHandler;
+        _getDepartmentByIdHandler = getDepartmentByIdHandler;
+        _updateDepartmentHandler = updateDepartmentHandler;
+        _deleteDepartmentHandler = deleteDepartmentHandler;
         _updateDepartmentNameHandler = updateDepartmentNameHandler;
     }
 
@@ -32,7 +45,13 @@ public sealed class DepartmentsController : ControllerBase
         [FromBody] CreateDepartmentDto departmentDto,
         CancellationToken cancellationToken)
     {
-        var result = await _departmentsService.CreateAsync(departmentDto, cancellationToken);
+        var command = new CreateDepartmentCommand(
+            departmentDto.Name,
+            departmentDto.Slug,
+            departmentDto.ParentId,
+            departmentDto.LocationIds);
+
+        var result = await _createDepartmentHandler.Handle(command, cancellationToken);
         return result.ToCreatedEnvelopeResult();
     }
 
@@ -41,7 +60,8 @@ public sealed class DepartmentsController : ControllerBase
     public async Task<IResult> GetDepartments(
         CancellationToken cancellationToken)
     {
-        var result = await _departmentsService.GetAllAsync(cancellationToken);
+        var query = new GetDepartmentsQuery();
+        var result = await _getDepartmentsHandler.Handle(query, cancellationToken);
         return result.ToEnvelopeResult();
     }
 
@@ -52,7 +72,8 @@ public sealed class DepartmentsController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var result = await _departmentsService.GetByIdAsync(id, cancellationToken);
+        var query = new GetDepartmentByIdQuery(id);
+        var result = await _getDepartmentByIdHandler.Handle(query, cancellationToken);
         return result.ToEnvelopeResult();
     }
 
@@ -66,7 +87,8 @@ public sealed class DepartmentsController : ControllerBase
         [FromBody] UpdateDepartmentDto departmentDto,
         CancellationToken cancellationToken)
     {
-        var result = await _departmentsService.UpdateAsync(id, departmentDto, cancellationToken);
+        var command = new UpdateDepartmentCommand(id, departmentDto.Name);
+        var result = await _updateDepartmentHandler.Handle(command, cancellationToken);
         return result.ToEnvelopeResult();
     }
 
@@ -77,7 +99,8 @@ public sealed class DepartmentsController : ControllerBase
         [FromRoute] Guid id,
         CancellationToken cancellationToken)
     {
-        var result = await _departmentsService.DeleteAsync(id, cancellationToken);
+        var command = new DeleteDepartmentCommand(id);
+        var result = await _deleteDepartmentHandler.Handle(command, cancellationToken);
         return result.ToEnvelopeResult();
     }
 
@@ -96,7 +119,8 @@ public sealed class DepartmentsController : ControllerBase
             return error.ToEnvelopeResult();
         }
 
-        var result = await _updateDepartmentNameHandler.Handle(request, cancellationToken);
+        var command = new UpdateDepartmentNameCommand(request.Id, request.Name);
+        var result = await _updateDepartmentNameHandler.Handle(command, cancellationToken);
         return result.ToEnvelopeResult();
     }
 }

@@ -1,8 +1,6 @@
 using DirectoryService.Domain.Common;
 using DirectoryService.Presentation.Common;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace DirectoryService.Presentation;
 
