@@ -1,0 +1,46 @@
+# dotnet-fullstack
+
+> .NET 10 Modular Monolith backend implementing Clean Architecture, Domain-Driven Design (DDD), custom CQRS vertical slices without MediatR, functional Result Pattern, and swappable dual persistence (Entity Framework Core and Dapper).
+
+Important architectural notes and invariants:
+- Modular Monolith: Every bounded context resides in its own isolated module under `backend/<ModuleName>/`. Cross-module calls must never bypass public contracts or share internal DbContext instances.
+- Clean Architecture Layers: Strict inward dependency direction (`Domain` -> `Contracts` -> `Application` -> `Infrastructure.Postgres` / `Presentation`). Domain has zero framework dependencies outside `CSharpFunctionalExtensions`.
+- Vertical Slice CQRS: Features are implemented as discrete commands and queries with dedicated FluentValidation validators and handlers (`ICommand`, `IQuery`, `ICommandHandler`, `IQueryHandler`). MediatR is not used.
+- Error Handling: Business logic and domain validation return `Result<T, ErrorList>` or `UnitResult<ErrorList>`. Exceptions are reserved strictly for unrecoverable infrastructure crashes.
+- API Envelopes: All HTTP responses wrap payloads in `Envelope<T>` (`Result`, `Errors`, `TimeGenerated`). Status codes are mapped deterministically via `ResultExtensions` from domain `ErrorType`.
+- Swappable Persistence: Both EF Core and Dapper implement repository interfaces (`IDepartmentRepository`, `ILocationRepository`), toggleable via `Repository:Implementation` configuration. Connections use a singleton `NpgsqlDataSource` with non-blocking connection lifecycles.
+- Code Governance: Central Package Management (`Directory.Packages.props`) and universal Roslynator, Meziantou, AsyncFixer, and SonarAnalyzer rules (`Directory.Build.props`).
+
+## Intent-Based File Routing
+
+Use this routing table to navigate directly to the authoritative documentation for common engineering tasks:
+
+| Goal / Intended Action | Authoritative Documentation |
+| :--- | :--- |
+| Understand modular monolith structure or add a new module | [Modular Monolith Architecture](docs/architecture/overview.md) |
+| Inspect or modify Department, Location, or Position domain models | [DirectoryService Domain Model](docs/modules/directory-service/domain-model.md) |
+| Add or modify a CQRS command, query, handler, or validation rule | [DirectoryService CQRS Application](docs/modules/directory-service/cqrs-application.md) |
+| Modify PostgreSQL schema, EF Core migrations, or Dapper queries | [DirectoryService Persistence](docs/modules/directory-service/persistence.md) |
+| Add or update HTTP endpoints, envelopes, or status code mappings | [DirectoryService API Presentation](docs/modules/directory-service/api-presentation.md) |
+| Set up Docker containers (Postgres, Seq), connection strings, or run app | [Getting Started & Workflows](docs/development/getting-started.md) |
+| Run xUnit test suites, write unit/slice tests, or verify assertions | [Testing Strategy](docs/development/testing-strategy.md) |
+| Ingest complete documentation in a single pass | [Consolidated Context](llms-full.txt) |
+
+## Cross-Cutting Architecture & Standards
+
+- [Modular Monolith Overview](docs/architecture/overview.md): System layout, 5-project layer separation, dependency constraints, and central package management.
+- [Getting Started & Development](docs/development/getting-started.md): Prerequisites (.NET 10, Docker), Docker Compose services (Postgres on 5434, Seq on 5341), running and migrations.
+- [Testing Strategy](docs/development/testing-strategy.md): xUnit test suite breakdown, domain unit testing, handler mocking, controller endpoint integration, and 87 test suite status.
+
+## Modules: DirectoryService
+
+- [DirectoryService Overview](docs/modules/directory-service/overview.md): Bounded context overview, organization tree management, and business capabilities.
+- [Domain Model & Invariants](docs/modules/directory-service/domain-model.md): Aggregate roots (`Department`, `Location`, `Position`), materialized paths, `ErrorType`, and `Errors` catalog.
+- [CQRS Application Slices](docs/modules/directory-service/cqrs-application.md): Vertical slices, `ICommand`/`IQuery` interfaces, FluentValidation integration, and command handlers.
+- [Persistence & Infrastructure](docs/modules/directory-service/persistence.md): Dual repository pattern (EF Core + Dapper), connection pooling via `NpgsqlDataSource`, schema, and constraints.
+- [API & Presentation](docs/modules/directory-service/api-presentation.md): ASP.NET Core 10 Web API, `Envelope<T>` contracts, HTTP status code mapping, Scalar OpenAPI, and Serilog/Seq.
+
+## Optional
+
+- [Legacy Snapshot 2026-08-27 (Part 1)](backend/DirectoryService/docs/snapshots/snapshot_20260827_141615.md): Historical session snapshot and physical metrics baseline.
+- [Legacy Snapshot 2026-08-27 (Part 2)](backend/DirectoryService/docs/snapshots/snapshot_20260827_141618.md): Historical session snapshot archive.

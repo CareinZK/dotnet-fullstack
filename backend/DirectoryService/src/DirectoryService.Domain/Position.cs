@@ -43,6 +43,7 @@ public class Position
     public DateTime UpdatedAt { get; private set; }
     public string Name { get; private set; }
 
+
     // ReSharper disable once UnusedMember.Global
     public UnitResult<Error> ChangeName(string name)
     {

@@ -1,0 +1,967 @@
+﻿# dotnet-fullstack — Consolidated Complete Documentation (llms-full.txt)
+
+> Comprehensive consolidated documentation for the dotnet-fullstack .NET 10 Modular Monolith.
+> Generated automatically by scripts/generate-llms-full.ps1. Do not edit directly; update docs/ instead.
+
+---
+
+## Master Table of Contents
+
+1. [Modular Monolith Architecture Overview](#section-1) (architecture/overview.md)
+2. [Getting Started & Development Workflows](#section-2) (development/getting-started.md)
+3. [Testing Strategy & Verification Suite](#section-3) (development/testing-strategy.md)
+4. [DirectoryService Module Overview](#section-4) (modules/directory-service/overview.md)
+5. [DirectoryService: Domain Model & Business Rules](#section-5) (modules/directory-service/domain-model.md)
+6. [DirectoryService: CQRS Application Layer](#section-6) (modules/directory-service/cqrs-application.md)
+7. [DirectoryService: Persistence & Infrastructure](#section-7) (modules/directory-service/persistence.md)
+8. [DirectoryService: API & Presentation Layer](#section-8) (modules/directory-service/api-presentation.md)
+
+---
+
+<a name="section-1"></a>
+<!-- ===================================================================== -->
+<!-- START DOCUMENT 1 of 8: architecture/overview.md -->
+<!-- ===================================================================== -->
+
+# Modular Monolith Architecture Overview
+
+## 1. Architectural Philosophy
+
+The codebase is structured as a **Modular Monolith** targeting **.NET 10** and **C# 13**. The system combines the operational simplicity of a single deployable unit with the strict domain boundaries and autonomy of microservices.
+
+```mermaid
+graph TD
+    subgraph Monorepo["dotnet-fullstack Monorepo"]
+        subgraph Backend["backend/"]
+            M1["DirectoryService Module (Active)"]
+            M2["Future Modules (e.g. EmployeeService)"]
+        end
+        subgraph SharedRules["Central Governance"]
+            CFG1["Directory.Build.props (Roslyn, Sonar, Meziantou)"]
+            CFG2["Directory.Packages.props (Central Package Management)"]
+        end
+    end
+```
+
+### Core Design Principles
+
+1. **Modular Monolith Boundaries**:
+   - Each business capability resides in its own isolated module under `backend/<ModuleName>/`.
+   - Modules must not directly reference another module's internal implementation or database context. Cross-module communication is restricted to shared contracts or asynchronous integration events.
+2. **Clean Architecture per Module**:
+   - Every module is organized into concentric layers: **Domain**, **Contracts**, **Application**, **Infrastructure**, and **Presentation**.
+   - The dependency rule is strictly inward: `Domain` has no dependencies on other layers; `Application` depends only on `Domain` and `Contracts`; `Infrastructure` and `Presentation` depend on `Application`.
+3. **Vertical Slice CQRS**:
+   - Features are organized as discrete vertical slices (`Command` + `Validator` + `Handler` or `Query` + `Handler`).
+   - Slices use direct, strongly-typed interfaces (`ICommand`, `IQuery`, `ICommandHandler`, `IQueryHandler`) without MediatR overhead.
+4. **Functional Result Pattern for Business Logic**:
+   - Domain operations and use-case handlers return `Result<T, Error>` or `UnitResult<Error>` (via `CSharpFunctionalExtensions`) instead of throwing exceptions for control flow.
+   - Exceptions are strictly reserved for unrecoverable infrastructure failures (e.g., database network partitions, process crashes).
+5. **Uniform API Envelope**:
+   - All HTTP responses are wrapped in an `Envelope<T>` contract containing `Result`, `Errors`, and `TimeGenerated`.
+6. **Swappable Dual Persistence**:
+   - Repositories provide both Entity Framework Core and Dapper implementations, selectable at runtime via configuration (`Repository:Implementation`: `EFCore` | `Dapper`).
+
+---
+
+## 2. Monorepo & Solution Structure
+
+```
+dotnet-fullstack/
+├── .editorconfig                          # Code style and formatting rules
+├── global.json                            # .NET SDK pin (10.0.203)
+├── AGENTS.md                              # AI agent guidelines and doc navigation
+├── CLAUDE.md                              # Reference redirect to AGENTS.md
+├── llms.txt                               # Tier 2 AI entrypoint & invariant catalog
+├── llms-full.txt                          # Tier 3 Consolidated full context
+├── docs/                                  # Tier 1 Granular documentation
+│   ├── index.md
+│   ├── architecture/                      # Cross-cutting architecture blueprints
+│   ├── development/                       # Development setup and testing guides
+│   └── modules/                           # Bounded context documentation
+│       └── directory-service/             # DirectoryService module docs
+├── scripts/                               # Automation tooling (docs generators, etc.)
+└── backend/
+    ├── Directory.Build.props              # Monorepo-wide compiler and analyzer rules
+    ├── Directory.Packages.props           # Central Package Management (CPM)
+    └── DirectoryService/                  # DirectoryService Bounded Context
+        ├── DirectoryService.slnx          # Solution file
+        ├── src/
+        │   ├── DirectoryService.Domain/
+        │   ├── DirectoryService.Contracts/
+        │   ├── DirectoryService.Application/
+        │   ├── DirectoryService.Infrastructure.Postgres/
+        │   └── DirectoryService.Presentation/
+        └── tests/
+            └── DirectoryService.Tests/
+```
+
+---
+
+## 3. Layer Responsibilities within a Module
+
+Each module adheres to this 5-project layer separation:
+
+| Project Layer | Responsibility | Dependencies |
+| :--- | :--- | :--- |
+| **`<Module>.Domain`** | Enterprise business rules, aggregate roots, entities, domain events, domain error catalogs, and business invariants. | `CSharpFunctionalExtensions` only. No EF Core, no ASP.NET. |
+| **`<Module>.Contracts`** | Public DTOs, external request/response definitions, and shared contract models. | Zero external dependencies. |
+| **`<Module>.Application`** | Use-case orchestration, CQRS commands/queries, FluentValidation validators, repository interfaces, and domain coordination. | Depends on `.Domain` and `.Contracts`. |
+| **`<Module>.Infrastructure.Postgres`** | Technical details: EF Core DbContext, Dapper SQL queries, migrations, connection management (`NpgsqlDataSource`), repository implementations. | Depends on `.Application` and `.Domain`. |
+| **`<Module>.Presentation`** | HTTP endpoints, ASP.NET Core controllers, API Envelopes, Scalar OpenAPI documentation, and Serilog logging configuration. | Depends on `.Application`, `.Contracts`, and `.Infrastructure.Postgres`. |
+
+---
+
+## 4. Central Package & Quality Governance
+
+The repository uses .NET Central Package Management (CPM) and strict code analysis:
+
+- **`Directory.Packages.props`**: All package versions are centralized. Individual `.csproj` files use `<PackageReference Include="..." />` without specifying a `Version`.
+- **`Directory.Build.props`**: Automatically injects Roslyn and third-party code analyzers into every project:
+  - `Roslynator.Analyzers`: Refactoring, styling, and common .NET idioms.
+  - `Meziantou.Analyzer`: Safety, performance, and best practices.
+  - `AsyncFixer`: Detection of async/await anti-patterns.
+  - `SonarAnalyzer.CSharp`: Deep security and bug detection.
+  - `EnforceCodeStyleInBuild`: Enabled.
+  - Target Framework: `net10.0`.
+  - Nullable Reference Types: `enable`.
+
+<!-- END DOCUMENT: architecture/overview.md -->
+
+---
+
+<a name="section-2"></a>
+<!-- ===================================================================== -->
+<!-- START DOCUMENT 2 of 8: development/getting-started.md -->
+<!-- ===================================================================== -->
+
+# Getting Started & Development Workflows
+
+This document outlines the local development environment setup, infrastructure dependencies, build procedures, and coding standards.
+
+---
+
+## 1. Prerequisites
+
+- **.NET 10 SDK** (Version `10.0.203` or later, as pinned in `global.json`).
+- **Docker & Docker Compose** (for PostgreSQL and Seq containers).
+- **PowerShell 7+** / Bash terminal.
+- Recommended IDE: Visual Studio 2026, JetBrains Rider 2025+, or VS Code with C# Dev Kit.
+
+---
+
+## 2. Infrastructure Services (Docker Compose)
+
+The repository provides local infrastructure dependencies via Docker Compose located at `backend/DirectoryService/src/docker-compose.yml`.
+
+### Services
+
+| Service | Image | Host Port | Internal Port | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **PostgreSQL** | `postgres:latest` | **`5434`** | `5432` | Relational database. Port is mapped to `5434` to prevent collisions with local default PostgreSQL instances. |
+| **Seq** | `datalust/seq:latest` | **`5341`** | `80` | Real-time structured log ingestion and UI dashboard. |
+
+### Environment Configuration (`.env`)
+
+Environment variables reside in `backend/DirectoryService/src/.env`:
+```env
+POSTGRES_DB=directory_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+```
+
+### Starting Infrastructure
+
+```powershell
+# From repository root
+docker compose -f backend/DirectoryService/src/docker-compose.yml up -d
+```
+
+Verify containers are running:
+```powershell
+docker ps --filter "name=postgres" --filter "name=seq"
+```
+
+To stop containers:
+```powershell
+docker compose -f backend/DirectoryService/src/docker-compose.yml down
+```
+
+---
+
+## 3. Database Migrations
+
+Entity Framework Core migrations are located in `DirectoryService.Infrastructure.Postgres/Migrations/`.
+
+To apply pending migrations to the local PostgreSQL database:
+```powershell
+dotnet ef database update `
+  --project backend/DirectoryService/src/DirectoryService.Infrastructure.Postgres `
+  --startup-project backend/DirectoryService/src/DirectoryService.Presentation
+```
+
+To add a new migration when domain entities or configurations change:
+```powershell
+dotnet ef migrations add <MigrationName> `
+  --project backend/DirectoryService/src/DirectoryService.Infrastructure.Postgres `
+  --startup-project backend/DirectoryService/src/DirectoryService.Presentation `
+  --output-dir Migrations
+```
+
+---
+
+## 4. Building and Running Locally
+
+### Build Solution
+```powershell
+dotnet build backend/DirectoryService/DirectoryService.slnx
+```
+
+### Run Web API
+```powershell
+dotnet run --project backend/DirectoryService/src/DirectoryService.Presentation
+```
+
+### Endpoints & Observability
+Once started, the application exposes:
+- **Root**: `http://localhost:5000/` (returns `"Hello World!"`)
+- **Health Check**: `http://localhost:5000/health` (EF Core database connectivity check)
+- **Scalar OpenAPI Reference**: `http://localhost:5000/scalar/v1` (interactive API documentation)
+- **OpenAPI Document**: `http://localhost:5000/openapi/v1.json`
+- **Seq Log Dashboard**: `http://localhost:5341`
+
+---
+
+## 5. Configuration Settings
+
+Settings are configured via `appsettings.json` and `appsettings.Development.json`:
+
+```json
+{
+  "ConnectionStrings": {
+    "Postgres": "Host=localhost;Port=5434;Database=directory_db;Username=postgres;Password=postgres;"
+  },
+  "Repository": {
+    "Implementation": "EFCore" // Options: "EFCore" or "Dapper"
+  },
+  "Seq": {
+    "ServerUrl": "http://localhost:5341"
+  }
+}
+```
+
+- **Swapping Persistence**: Set `"Repository": { "Implementation": "Dapper" }` to switch the entire data layer to Dapper SQL repositories at runtime.
+
+---
+
+## 6. Static Analysis & Code Quality Rules
+
+`backend/Directory.Build.props` automatically enforces code style and analyzer rules during every build:
+- **Roslynator** (`Roslynator.Analyzers`): Universal C# conventions.
+- **Meziantou** (`Meziantou.Analyzer`): Correctness, thread safety, and string culture rules.
+- **AsyncFixer** (`AsyncFixer`): Eliminates async/await anti-patterns.
+- **SonarAnalyzer** (`SonarAnalyzer.CSharp`): Security, reliability, and code smells.
+
+To check for analyzer warnings across the solution:
+```powershell
+dotnet build backend/DirectoryService/DirectoryService.slnx /warnaserror:false
+```
+
+<!-- END DOCUMENT: development/getting-started.md -->
+
+---
+
+<a name="section-3"></a>
+<!-- ===================================================================== -->
+<!-- START DOCUMENT 3 of 8: development/testing-strategy.md -->
+<!-- ===================================================================== -->
+
+# Testing Strategy & Verification Suite
+
+This document describes the testing architecture, test suites, execution commands, and guidelines for maintaining high test coverage across modules.
+
+---
+
+## 1. Overview
+
+Testing is centralized under `backend/<ModuleName>/tests/`. For `DirectoryService`, all tests reside in `backend/DirectoryService/tests/DirectoryService.Tests/`.
+
+The test suite uses:
+- **xUnit** (`xunit 2.9.3`) as the test runner.
+- Strongly-typed assertions verifying both successful domain values and `ErrorList` contents.
+- Fast in-memory execution (87 tests executing in ~2 seconds).
+
+---
+
+## 2. Test Suite Breakdown
+
+The test project contains 8 targeted test files covering every architectural layer:
+
+| Test File | Layer Tested | Primary Responsibilities |
+| :--- | :--- | :--- |
+| **`DomainTests.cs`** | Domain | Verifies entity creation (`Department.Create`, `Location.Create`, `Position.Create`), invariants (empty Guids, null/whitespace names, invalid slugs), materialized path calculation (`BuildPath`), and rename methods (`ChangeName`). |
+| **`HandlerTests.cs`** | Application | Tests CQRS command and query handlers (`CreateDepartmentHandler`, `DeleteDepartmentHandler`, `GetDepartmentByIdHandler`, `GetDepartmentsHandler`, etc.) using mocked repository dependencies. Verifies business validation, duplicate checks, and proper `Result` / `ErrorList` returns. |
+| **`ValidationTests.cs`** | Application | Tests FluentValidation validators (e.g., `CreateDepartmentCommandValidator`) against boundary conditions, length constraints, and slug regex matching. |
+| **`ControllerEndpointTests.cs`** | Presentation | Tests ASP.NET Core controllers (`DepartmentsController`, `LocationController`, etc.). Validates correct delegation to CQRS handlers, HTTP status code mapping (200, 201, 400, 404, 409), and `Envelope<T>` serialization. |
+| **`ResultMappingTests.cs`** | Presentation | Verifies `ResultExtensions.GetStatusCode` mappings: `ErrorType.Validation` → 400, `NotFound` → 404, `Conflict` → 409, `Forbidden` → 403, `Unauthorized` → 401, `Failure` → 500. |
+| **`LoggingTests.cs`** | Presentation / App | Validates Serilog structured logging enrichment, Serilog exception destructurers (`DbUpdateExceptionDestructurer`), and `IDiagnosticContext` parameter setting. |
+| **`DependencyInjectionTests.cs`** | Infrastructure / Setup | Ensures all services, handlers, validators, and repositories register correctly in the Microsoft DI container. Specifically tests runtime swapping between `EFCore` and `Dapper` configurations. |
+| **`RepositoryCancellationTests.cs`** | Infrastructure | Asserts that `CancellationToken` is properly honored by repository asynchronous methods and that `OperationCanceledException` is propagated rather than swallowed or converted to database errors. |
+
+---
+
+## 3. Running Tests
+
+### Run All Tests
+```powershell
+dotnet test backend/DirectoryService/DirectoryService.slnx
+```
+
+### Run a Specific Test Class
+```powershell
+dotnet test backend/DirectoryService/DirectoryService.slnx --filter FullyQualifiedName~HandlerTests
+```
+
+### Run with Detailed Output
+```powershell
+dotnet test backend/DirectoryService/DirectoryService.slnx --logger "console;verbosity=detailed"
+```
+
+---
+
+## 4. Testing Conventions for New Features
+
+When creating a new CQRS vertical slice or adding a module:
+
+1. **Domain Unit Tests**: Test factory methods (`Create`) with both valid data and invalid edge cases (empty strings, invalid formats, invalid IDs).
+2. **Validator Tests**: Ensure each validation rule in the `AbstractValidator<TCommand>` has matching test assertions.
+3. **Handler Tests**:
+   - Mock all repository dependencies (`IDepartmentRepository`, etc.).
+   - Test the happy path returning `Result.Success`.
+   - Test every validation failure and business failure path (e.g. duplicate name, entity not found) returning appropriate `ErrorList` entries.
+4. **Endpoint Tests**:
+   - Assert that handlers are invoked with the mapped command.
+   - Assert the HTTP response envelope format (`Envelope<T>`) and HTTP status code.
+
+<!-- END DOCUMENT: development/testing-strategy.md -->
+
+---
+
+<a name="section-4"></a>
+<!-- ===================================================================== -->
+<!-- START DOCUMENT 4 of 8: modules/directory-service/overview.md -->
+<!-- ===================================================================== -->
+
+# DirectoryService Module Overview
+
+## 1. Module Purpose & Bounded Context
+
+The **`DirectoryService`** module is the core organizational directory bounded context within the Modular Monolith. It governs:
+- **Departments**: Tree-structured organizational units organized via hierarchical materialized paths (e.g., `engineering/backend`).
+- **Locations**: Physical company offices and work sites.
+- **Positions**: Standardized job titles and organizational roles.
+- **Department-Location Associations**: Office assignments for departments, including tracking of each department's primary office (`IsPrimaryLocation`).
+- **Department-Position Associations**: Mapping of valid job titles applicable to specific departments.
+
+---
+
+## 2. Solution Structure
+
+The module lives under `backend/DirectoryService/` and consists of 5 internal Clean Architecture projects:
+
+```
+backend/DirectoryService/
+├── DirectoryService.slnx
+├── docs/                                  # Internal snapshots and legacy notes
+├── src/
+│   ├── DirectoryService.Domain/           # Entities, Aggregates, Invariants, Error Catalog
+│   ├── DirectoryService.Contracts/        # Public Request/Response DTOs
+│   ├── DirectoryService.Application/      # CQRS Slices, Handlers, Validators, Repository Interfaces
+│   ├── DirectoryService.Infrastructure.Postgres/ # EF Core DbContext, Dapper Repos, Migrations
+│   └── DirectoryService.Presentation/     # Controllers, ResultExtensions, Envelopes, Program.cs
+└── tests/
+    └── DirectoryService.Tests/            # xUnit test suite (Domain, Handlers, Endpoints, DI)
+```
+
+---
+
+## 3. Subsystem Invariants & Key Rules
+
+1. **Hierarchy Integrity**:
+   - Every department has an immutable `Slug` and a calculated `Path` (materialized path).
+   - If a department has a parent, its path is `{Parent.Path}/{Slug}`. Root departments have `Path = {Slug}`.
+   - Slugs must be URL-safe (lowercase letters, digits, hyphens).
+2. **Primary Location Constraint**:
+   - A department can be linked to multiple locations, but only one location can be marked as `IsPrimaryLocation = true`.
+3. **Dual Persistence Support**:
+   - Both Entity Framework Core and Dapper are first-class persistence implementations.
+   - All repository methods return functional `Result<T, Error>` or `UnitResult<Error>` objects.
+4. **Uniform Response Envelope**:
+   - All HTTP endpoints wrap responses in an `Envelope<T>` object containing the timestamp, result payload, and structured error list.
+
+<!-- END DOCUMENT: modules/directory-service/overview.md -->
+
+---
+
+<a name="section-5"></a>
+<!-- ===================================================================== -->
+<!-- START DOCUMENT 5 of 8: modules/directory-service/domain-model.md -->
+<!-- ===================================================================== -->
+
+# DirectoryService: Domain Model & Business Rules
+
+## 1. Domain Layer Overview
+
+The **`DirectoryService.Domain`** layer encapsulates all enterprise business rules, entity models, domain invariants, and the error taxonomy.
+
+### Invariant Design Rules
+1. **Private Constructors**: Entities cannot be instantiated directly via `new`. Construction is gated behind static factory methods (e.g., `Department.Create(...)`).
+2. **Encapsulated State**: All entity property setters are `private`. State mutations occur through explicit domain methods (e.g., `ChangeName(...)`).
+3. **Pure C#**: The domain layer has zero references to ASP.NET, Entity Framework Core, or database drivers. The only external dependency is `CSharpFunctionalExtensions`.
+
+---
+
+## 2. Entities & Aggregates
+
+```mermaid
+classDiagram
+    class Department {
+        +Guid Id
+        +Guid? ParentId
+        +string Name
+        +string Slug
+        +string Path
+        +DateTime CreatedAt
+        +DateTime UpdatedAt
+        +Create(id, name, slug, parentDepartment) Result~Department, Error~
+        +ChangeName(name) UnitResult~Error~
+    }
+
+    class Location {
+        +Guid Id
+        +string Name
+        +string Address
+        +DateTime CreatedAt
+        +DateTime UpdatedAt
+        +Create(id, name, address) Result~Location, Error~
+        +ChangeName(name) UnitResult~Error~
+        +ChangeAddress(address) UnitResult~Error~
+    }
+
+    class Position {
+        +Guid Id
+        +string Name
+        +DateTime CreatedAt
+        +DateTime UpdatedAt
+        +Create(id, name) Result~Position, Error~
+        +ChangeName(name) UnitResult~Error~
+    }
+
+    class DepartmentLocation {
+        +Guid Id
+        +Guid DepartmentId
+        +Guid LocationId
+        +bool IsPrimaryLocation
+        +Create(id, deptId, locId, isPrimary) Result~DepartmentLocation, Error~
+        +UpdatePrimaryStatus(isPrimary) void
+    }
+
+    class DepartmentPositions {
+        +Guid Id
+        +Guid DepartmentId
+        +IReadOnlyList~Guid~ PositionIds
+        +Create(id, deptId, positionIds) Result~DepartmentPositions, Error~
+    }
+
+    Department "1" --> "*" DepartmentLocation : links
+    Location "1" --> "*" DepartmentLocation : referenced by
+    Department "1" --> "1" DepartmentPositions : maps allowed roles
+    Position "*" <-- DepartmentPositions : references
+```
+
+### Department
+- **Identifier**: `Guid Id`.
+- **Properties**: `ParentId` (`Guid?`), `Name` (`string`), `Slug` (`string`), `Path` (`string`), `CreatedAt`, `UpdatedAt`.
+- **Slug Invariant**: Must match regex `^[a-z0-9]+(?:-[a-z0-9]+)*$` (lowercase letters, numbers, and hyphens).
+- **Materialized Path**:
+  - Root department: `Path = Slug`.
+  - Child department: `Path = Parent.Path + "/" + Slug`.
+  - Example: Parent slug `engineering`, child slug `backend` → `engineering/backend`.
+- **Factory Method**:
+  ```csharp
+  public static Result<Department, Error> Create(Guid id, string name, string slug, Department? parentDepartment)
+  ```
+- **Mutation**:
+  ```csharp
+  public UnitResult<Error> ChangeName(string name)
+  ```
+
+### Location
+- **Identifier**: `Guid Id`.
+- **Properties**: `Name` (`string`), `Address` (`string`), `CreatedAt`, `UpdatedAt`.
+- **Invariants**: `Name` and `Address` must not be null or whitespace.
+- **Factory Method**:
+  ```csharp
+  public static Result<Location, Error> Create(Guid id, string name, string address)
+  ```
+- **Mutations**: `ChangeName(string name)`, `ChangeAddress(string address)`.
+
+### Position
+- **Identifier**: `Guid Id`.
+- **Properties**: `Name` (`string`), `CreatedAt`, `UpdatedAt`.
+- **Factory Method**:
+  ```csharp
+  public static Result<Position, Error> Create(Guid id, string name)
+  ```
+- **Mutations**: `ChangeName(string name)`.
+
+### Association Entities
+
+#### DepartmentLocation
+Links a department to an office facility:
+- `DepartmentId` (`Guid`), `LocationId` (`Guid`), `IsPrimaryLocation` (`bool`).
+- `Create(Guid id, Guid departmentId, Guid locationId, bool isPrimaryLocation = false)`.
+- `UpdatePrimaryStatus(bool isPrimaryLocation)`.
+
+#### DepartmentPositions
+Defines allowed position IDs within a department:
+- `DepartmentId` (`Guid`), `PositionIds` (`IReadOnlyList<Guid>`).
+- `Create(Guid id, Guid departmentId, IReadOnlyList<Guid> positionIds)`.
+
+---
+
+## 3. Error Modeling & Taxonomy
+
+All errors are modeled explicitly in `DirectoryService.Domain.Common`.
+
+### Error Structure
+```csharp
+public record Error(string Code, string Message, ErrorType Type, string? InvalidField = null);
+```
+
+### ErrorType Enum
+- `Validation`: Input failed syntax, format, or business invariant rules (maps to HTTP 400).
+- `NotFound`: Requested entity was not found (maps to HTTP 404).
+- `Conflict`: Unique constraint violation or state collision (maps to HTTP 409).
+- `Forbidden`: Operation not permitted (maps to HTTP 403).
+- `Unauthorized`: Authentication required (maps to HTTP 401).
+- `Failure`: Unexpected or internal infrastructure error (maps to HTTP 500).
+
+### Error Catalog (`Errors.cs`)
+Standardized factory methods prevent string drift:
+
+| Category | Method | Code | Default Message |
+| :--- | :--- | :--- | :--- |
+| **General** | `Errors.General.ValueIsRequired(fieldName)` | `value.is.required` | `Value is required.` |
+| **General** | `Errors.General.ValueIsInvalid(fieldName)` | `value.is.invalid` | `Value is invalid.` |
+| **General** | `Errors.General.NotFound(id, name)` | `record.not.found` | `Record with id '{id}' was not found.` |
+| **General** | `Errors.General.Database(message)` | `database.error` | `A database error occurred.` |
+| **General** | `Errors.General.Failure(message)` | `internal.server.error` | `An unexpected error occurred.` |
+| **Department** | `Errors.Department.NotFound(id)` | `department.not.found` | `Department with id '{id}' was not found.` |
+| **Department** | `Errors.Department.AlreadyExists(name)` | `department.already.exists` | `Department with name '{name}' already exists.` |
+| **Department** | `Errors.Department.ParentNotFound(parentId)` | `department.parent.not.found` | `Parent department with id '{id}' was not found.` |
+| **Department** | `Errors.Department.LocationAlreadyLinked` | `department.location.already.linked` | `Location '{locId}' is already linked...` |
+| **Department** | `Errors.Department.LocationNotLinked` | `department.location.not.linked` | `Location '{locId}' is not linked...` |
+| **Location** | `Errors.Location.NotFound(id)` | `location.not.found` | `Location with id '{id}' was not found.` |
+| **Location** | `Errors.Location.AlreadyExists(name)` | `location.already.exists` | `Location with name '{name}' already exists.` |
+| **Position** | `Errors.Position.NotFound(id)` | `position.not.found` | `Position with id '{id}' was not found.` |
+| **Position** | `Errors.Position.AlreadyExists(name)` | `position.already.exists` | `Position with name '{name}' already exists.` |
+
+### Result Pattern Integration
+Methods return `Result<T, Error>` or `UnitResult<Error>`:
+```csharp
+// Example: Converting single Error to ErrorList
+var errorList = Errors.Department.NotFound(id).ToErrorList();
+return Result.Failure<DepartmentDto, ErrorList>(errorList);
+```
+
+<!-- END DOCUMENT: modules/directory-service/domain-model.md -->
+
+---
+
+<a name="section-6"></a>
+<!-- ===================================================================== -->
+<!-- START DOCUMENT 6 of 8: modules/directory-service/cqrs-application.md -->
+<!-- ===================================================================== -->
+
+# DirectoryService: CQRS Application Layer
+
+## 1. Application Architecture
+
+The **`DirectoryService.Application`** project implements use-case workflows using the **Command Query Responsibility Segregation (CQRS)** pattern organized into **Vertical Slices**.
+
+### Design Philosophy
+- **No MediatR**: Handlers are injected directly as strongly-typed `ICommandHandler<TCommand, TResponse>` or `IQueryHandler<TQuery, TResponse>`. This provides compile-time safety, zero reflection overhead at dispatch, and effortless navigation in IDEs.
+- **Fail-Fast Validation**: Each command has an associated FluentValidation validator that executes before any database interaction.
+- **Pure Result Returns**: Handlers return `Result<TResponse, ErrorList>` or `UnitResult<ErrorList>`. They never throw business exceptions.
+
+---
+
+## 2. CQRS Abstractions (`DirectoryService.Application.Common`)
+
+```csharp
+// Commands (State Changes)
+public interface ICommand;
+public interface ICommand<out TResponse>;
+
+public interface ICommandHandler<in TCommand>
+    where TCommand : ICommand
+{
+    Task<UnitResult<ErrorList>> Handle(TCommand command, CancellationToken cancellationToken = default);
+}
+
+public interface ICommandHandler<in TCommand, TResponse>
+    where TCommand : ICommand<TResponse>
+{
+    Task<Result<TResponse, ErrorList>> Handle(TCommand command, CancellationToken cancellationToken = default);
+}
+
+// Queries (Reads Only)
+public interface IQuery<out TResponse>;
+
+public interface IQueryHandler<in TQuery, TResponse>
+    where TQuery : IQuery<TResponse>
+{
+    Task<Result<TResponse, ErrorList>> Handle(TQuery query, CancellationToken cancellationToken = default);
+}
+```
+
+---
+
+## 3. Vertical Slices Catalog
+
+Each use-case is isolated into its own directory containing the command/query record, the validator, and the handler.
+
+### Department Slices (`Departments/`)
+
+| Slice Folder | Command / Query | Returns | Key Operations & Rules |
+| :--- | :--- | :--- | :--- |
+| **`CreateDepartment/`** | `CreateDepartmentCommand` | `DepartmentDto` | Validates name/slug uniqueness, validates parent department existence, builds materialized path, links optional locations. |
+| **`GetDepartments/`** | `GetDepartmentsQuery` | `IReadOnlyList<DepartmentDto>` | Retrieves complete department tree. |
+| **`GetDepartmentById/`** | `GetDepartmentByIdQuery` | `DepartmentDto` | Retrieves single department with linked locations and position IDs. |
+| **`UpdateDepartment/`** | `UpdateDepartmentCommand` | `UnitResult` | Full update of department metadata and locations. |
+| **`UpdateDepartmentName/`** | `UpdateDepartmentNameCommand` | `Guid` | Targeted rename slice; checks unique name, delegates to `Department.ChangeName`. |
+| **`DeleteDepartment/`** | `DeleteDepartmentCommand` | `UnitResult` | Deletes department and cascades clean removal of associations. |
+| **`LinkDepartmentLocation/`** | `LinkDepartmentLocationCommand` | `UnitResult` | Associates an existing location to a department, ensuring primary status consistency. |
+| **`UnlinkDepartmentLocation/`** | `UnlinkDepartmentLocationCommand` | `UnitResult` | Removes location association from department. |
+
+### Location Slices (`Locations/`)
+
+| Slice Folder | Command / Query | Returns | Key Operations & Rules |
+| :--- | :--- | :--- | :--- |
+| **`CreateLocation/`** | `CreateLocationCommand` | `LocationDto` | Validates name uniqueness, creates `Location` entity. |
+| **`GetLocations/`** | `GetLocationsQuery` | `IReadOnlyList<LocationDto>` | Lists all physical offices. |
+| **`GetLocationById/`** | `GetLocationByIdQuery` | `LocationDto` | Fetches single location by Guid. |
+| **`UpdateLocation/`** | `UpdateLocationCommand` | `UnitResult` | Updates name and address. |
+| **`UpdateLocationName/`** | `UpdateLocationNameCommand` | `Guid` | Targeted location rename. |
+| **`DeleteLocation/`** | `DeleteLocationCommand` | `UnitResult` | Deletes location if not referenced as active primary location. |
+
+---
+
+## 4. FluentValidation Integration
+
+Validation is decoupled from controllers and encapsulated in command validators:
+
+```csharp
+public sealed class CreateDepartmentCommandValidator : AbstractValidator<CreateDepartmentCommand>
+{
+    public CreateDepartmentCommandValidator()
+    {
+        RuleFor(c => c.Name)
+            .NotEmpty().WithMessage("Department name is required.")
+            .MaximumLength(100).WithMessage("Department name must not exceed 100 characters.");
+
+        RuleFor(c => c.Slug)
+            .NotEmpty().WithMessage("Department slug is required.")
+            .Matches("^[a-z0-9]+(?:-[a-z0-9]+)*$")
+            .WithMessage("Department slug must be URL-safe.");
+    }
+}
+```
+
+In handlers, errors are converted to the domain `ErrorList`:
+```csharp
+var validationResult = await _validator.ValidateAsync(command, cancellationToken);
+if (!validationResult.IsValid)
+{
+    var errors = validationResult.ToErrorList();
+    _logger.LogWarning("Validation failed: {@Errors}", errors);
+    return errors;
+}
+```
+
+---
+
+## 5. Dependency Injection Registration
+
+In `DirectoryService.Application/DependencyInjection.cs`:
+- Automatically scans the assembly to register all `ICommandHandler` and `IQueryHandler` implementations.
+- Registers all `IValidator<T>` implementations via `FluentValidation.DependencyInjectionExtensions`.
+
+<!-- END DOCUMENT: modules/directory-service/cqrs-application.md -->
+
+---
+
+<a name="section-7"></a>
+<!-- ===================================================================== -->
+<!-- START DOCUMENT 7 of 8: modules/directory-service/persistence.md -->
+<!-- ===================================================================== -->
+
+# DirectoryService: Persistence & Infrastructure
+
+## 1. Infrastructure Overview
+
+The **`DirectoryService.Infrastructure.Postgres`** project implements database storage and retrieval using PostgreSQL. It is engineered with a **Dual Repository Pattern**, allowing runtime switching between **Entity Framework Core** and **Dapper**.
+
+---
+
+## 2. Connection Architecture & Pooling
+
+Database connections are optimized for performance and resource utilization via **`NpgsqlDataSource`**:
+
+```csharp
+// Registered in Presentation/DependencyInjection.cs
+services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(connectionString));
+
+// EF Core DbContext uses the singleton data source
+services.AddDbContext<AppDbContext>((sp, options) =>
+    options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>()));
+
+// Dapper uses scoped connections created from the singleton data source
+services.AddScoped<IDbConnection>(sp =>
+    sp.GetRequiredService<NpgsqlDataSource>().CreateConnection());
+```
+
+### Key Architectural Benefits
+- **Optimized Connection Pooling**: A single `NpgsqlDataSource` manages physical connection pools, preventing connection starvation and reducing handshake latency.
+- **Non-Blocking Execution**: Both EF Core and Dapper open and close connections asynchronously using non-blocking connection management.
+- **Cancellation Propagation**: All repository queries and commands accept and honor `CancellationToken`. If an HTTP request is aborted, queries are canceled immediately at the PostgreSQL server level without swallowing `OperationCanceledException`.
+
+---
+
+## 3. Dual Repository Pattern
+
+Both persistence engines implement the exact same repository interfaces:
+- `IDepartmentRepository` (in `DirectoryService.Application.Departments`)
+- `ILocationRepository` (in `DirectoryService.Application.Locations`)
+
+```mermaid
+graph TD
+    APP["Application Layer (Handlers)"]
+    
+    subgraph Interfaces["Repository Contracts"]
+        IDR["IDepartmentRepository"]
+        ILR["ILocationRepository"]
+    end
+    
+    subgraph Implementations["Infrastructure.Postgres"]
+        EF_D["EfCoreDepartmentRepository"]
+        EF_L["EfCoreLocationRepository"]
+        DAP_D["DapperDepartmentRepository"]
+        DAP_L["DapperLocationRepository"]
+    end
+
+    APP --> IDR
+    APP --> ILR
+    IDR -.->|Config: EFCore| EF_D
+    IDR -.->|Config: Dapper| DAP_D
+    ILR -.->|Config: EFCore| EF_L
+    ILR -.->|Config: Dapper| DAP_L
+```
+
+### Swapping Persistence Engines
+The active repository is controlled by `appsettings.json`:
+```json
+{
+  "Repository": {
+    "Implementation": "EFCore" // Or "Dapper"
+  }
+}
+```
+
+Implementation selection logic in `DependencyInjection.cs`:
+```csharp
+if (repositoryImplementation.Equals("Dapper", StringComparison.OrdinalIgnoreCase))
+{
+    services.AddScoped<ILocationRepository, DapperLocationRepository>();
+    services.AddScoped<IDepartmentRepository, DapperDepartmentRepository>();
+}
+else
+{
+    services.AddScoped<ILocationRepository, EfCoreLocationRepository>();
+    services.AddScoped<IDepartmentRepository, EfCoreDepartmentRepository>();
+}
+```
+
+---
+
+## 4. Database Schema & Constraints
+
+PostgreSQL table configurations reside in `DirectoryService.Infrastructure.Postgres.Configurations`.
+
+### Tables & Key Columns
+
+| Table | Entity | Key Columns & Types | Constraints & Indexes |
+| :--- | :--- | :--- | :--- |
+| **`departments`** | `Department` | `id` (UUID PK), `parent_id` (UUID FK nullable), `name` (VARCHAR 100), `slug` (VARCHAR 100), `path` (VARCHAR 500), `created_at` (TIMESTAMPTZ), `updated_at` (TIMESTAMPTZ) | UNIQUE index on `name`; UNIQUE index on `slug`; Index on `path` |
+| **`locations`** | `Location` | `id` (UUID PK), `name` (VARCHAR 100), `address` (VARCHAR 250), `created_at` (TIMESTAMPTZ), `updated_at` (TIMESTAMPTZ) | UNIQUE index on `name` |
+| **`department_locations`** | `DepartmentLocation` | `id` (UUID PK), `department_id` (UUID FK), `location_id` (UUID FK), `is_primary_location` (BOOLEAN) | Composite UNIQUE on `(department_id, location_id)`; Partial UNIQUE index on `(department_id)` WHERE `is_primary_location = true` |
+| **`department_positions`** | `DepartmentPositions` | `id` (UUID PK), `department_id` (UUID FK), `position_ids` (UUID[]) | Foreign key to `departments` |
+| **`positions`** | `Position` | `id` (UUID PK), `name` (VARCHAR 100), `created_at` (TIMESTAMPTZ), `updated_at` (TIMESTAMPTZ) | UNIQUE index on `name` |
+
+---
+
+## 5. Migrations Workflow
+
+Migrations are generated using Entity Framework Core tools and stored in `Migrations/`:
+```powershell
+dotnet ef migrations add <Name> `
+  --project backend/DirectoryService/src/DirectoryService.Infrastructure.Postgres `
+  --startup-project backend/DirectoryService/src/DirectoryService.Presentation `
+  --output-dir Migrations
+```
+
+<!-- END DOCUMENT: modules/directory-service/persistence.md -->
+
+---
+
+<a name="section-8"></a>
+<!-- ===================================================================== -->
+<!-- START DOCUMENT 8 of 8: modules/directory-service/api-presentation.md -->
+<!-- ===================================================================== -->
+
+# DirectoryService: API & Presentation Layer
+
+## 1. Presentation Architecture
+
+The **`DirectoryService.Presentation`** layer exposes RESTful HTTP endpoints using **ASP.NET Core 10** Web API controllers.
+
+### Core Responsibilities
+- Maps incoming HTTP requests to CQRS Commands or Queries.
+- Enforces a uniform response envelope (`Envelope<T>`).
+- Maps domain and application `ErrorType` values to standard HTTP status codes.
+- Instruments requests with structured Serilog logging and diagnostic telemetry.
+- Hosts interactive API documentation via Scalar (`/scalar/v1`).
+
+---
+
+## 2. The Uniform Response Envelope
+
+All endpoints return a standardized JSON envelope structure, eliminating client-side response ambiguity.
+
+### Successful Response Format (`Envelope<T>`)
+```json
+{
+  "result": {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "name": "Backend Engineering",
+    "slug": "backend-engineering",
+    "parentId": null,
+    "path": "backend-engineering",
+    "locations": []
+  },
+  "errors": null,
+  "timeGenerated": "2026-09-12T16:30:00Z"
+}
+```
+
+### Error Response Format (`Envelope`)
+```json
+{
+  "result": null,
+  "errors": [
+    {
+      "code": "department.already.exists",
+      "message": "Department with name 'Backend Engineering' already exists.",
+      "type": "Conflict",
+      "invalidField": null
+    }
+  ],
+  "timeGenerated": "2026-09-12T16:30:00Z"
+}
+```
+
+---
+
+## 3. Result-to-HTTP Status Code Mapping
+
+Controllers delegate directly to `ResultExtensions`:
+
+```csharp
+// In controller action:
+var result = await _createDepartmentHandler.Handle(command, cancellationToken);
+return result.ToCreatedEnvelopeResult(); // Returns 201 Created on success
+```
+
+The mapping function `ResultExtensions.GetStatusCode` evaluates the primary error:
+
+| Domain `ErrorType` | HTTP Status Code | Scenario |
+| :--- | :--- | :--- |
+| **`Validation`** | **`400 Bad Request`** | Input syntax, empty fields, regex mismatch, rule violations. |
+| **`Unauthorized`** | **`401 Unauthorized`** | Missing or invalid authentication token. |
+| **`Forbidden`** | **`403 Forbidden`** | Insufficient permissions to perform operation. |
+| **`NotFound`** | **`404 Not Found`** | Requested entity ID or slug does not exist. |
+| **`Conflict`** | **`409 Conflict`** | Duplicate name/slug, foreign key collisions, unique constraints. |
+| **`Failure`** | **`500 Internal Server Error`** | Unhandled database error or unexpected system failure. |
+
+---
+
+## 4. API Endpoints Catalog
+
+### Departments (`/departments`)
+
+| Method | Route | Description | Request Body | Success Status | Error Statuses |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/departments` | Create a new department | `CreateDepartmentDto` | `201 Created` | 400, 404, 409 |
+| `GET` | `/departments` | List all departments | _None_ | `200 OK` | 500 |
+| `GET` | `/departments/{id}` | Get department by ID | _None_ | `200 OK` | 404 |
+| `PUT` | `/departments/{id}` | Full update of department | `UpdateDepartmentDto` | `200 OK` | 400, 404, 409 |
+| `PATCH` | `/departments/{id}/name` | Rename department | `UpdateDepartmentNameRequest` | `200 OK` | 400, 404, 409 |
+| `DELETE` | `/departments/{id}` | Delete department | _None_ | `200 OK` | 404 |
+
+### Department Locations (`/departments/{departmentId}/locations`)
+
+| Method | Route | Description | Request Body | Success Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/departments/{deptId}/locations/{locId}` | Link office location to department | `LinkDepartmentLocationRequest` | `200 OK` |
+| `DELETE` | `/departments/{deptId}/locations/{locId}` | Remove office link from department | _None_ | `200 OK` |
+
+### Locations (`/locations`)
+
+| Method | Route | Description | Request Body | Success Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/locations` | Create a physical location | `CreateLocationDto` | `201 Created` |
+| `GET` | `/locations` | List all physical locations | _None_ | `200 OK` |
+| `GET` | `/locations/{id}` | Get location by ID | _None_ | `200 OK` |
+| `PUT` | `/locations/{id}` | Update location details | `UpdateLocationDto` | `200 OK` |
+| `PATCH` | `/locations/{id}/name` | Rename location | `UpdateLocationNameRequest` | `200 OK` |
+| `DELETE` | `/locations/{id}` | Delete location | _None_ | `200 OK` |
+
+---
+
+## 5. Observability & Logging
+
+- **Serilog**: Configured with console sink, Seq sink, and enrichment:
+  - `MachineName`, `EnvironmentName`, `ServiceName ("DirectoryService")`.
+  - Destructures entity framework database update exceptions (`DbUpdateExceptionDestructurer`).
+- **Diagnostic Context**:
+  ```csharp
+  if (result.IsSuccess)
+  {
+      _diagnosticContext?.Set("DepartmentId", result.Value.Id);
+  }
+  ```
+- **Global Exception Handler**: `GlobalExceptionHandler` intercepts unhandled exceptions, logs fatal errors, and produces an RFC 7807 `ProblemDetails` response with HTTP 500.
+
+---
+
+## 6. Interactive OpenAPI Documentation (Scalar)
+
+Scalar is configured in `Program.cs` for development environments:
+- Interactive UI: `http://localhost:5000/scalar/v1`
+- OpenAPI v3 Specification: `http://localhost:5000/openapi/v1.json`
+
+<!-- END DOCUMENT: modules/directory-service/api-presentation.md -->
+
+---
+
